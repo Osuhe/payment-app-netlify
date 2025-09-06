@@ -44,23 +44,23 @@
       </div>
       <div class="stat-card">
         <div class="stat-number" id="totalAmount">$0</div>
-        <div class="stat-label">Monto Total Procesado</div>
+        <div class="stat-label">Tarifas Cobradas</div>
       </div>
       <div class="stat-card">
         <div class="stat-number" id="totalFees">$0</div>
-        <div class="stat-label">Total en Tarifas</div>
+        <div class="stat-label">Monto Total Procesado</div>
       </div>
     </div>
-
-    <div id="status"></div>
     
-    <button class="btn btn-success" onclick="descargarPlanilla()">
-      📥 Descargar CSV
-    </button>
+    <div id="status" style="display: none;"></div>
     
-    <button class="btn btn-success" onclick="descargarPDF()">
-      📄 Descargar PDF
-    </button>
+    <div style="margin: 20px 0;">
+      <button class="btn" onclick="cargarTransacciones()">🔄 Cargar Datos</button>
+      <button class="btn" onclick="descargarPDF()">📄 Exportar PDF</button>
+      <button class="btn" onclick="descargarPlanilla()">📊 Descargar Planilla</button>
+      <button class="btn" onclick="limpiarDatos()">🗑️ Limpiar Datos</button>
+      <button class="btn" onclick="cerrarSesion()" style="background: #dc2626;">🚪 Cerrar Sesión</button>
+    </div>
     
     <button class="btn" onclick="verEstadisticas()">
       📈 Actualizar Estadísticas
@@ -80,6 +80,30 @@
 </div>
 
 <script>
+// Verificar autenticación al cargar la página
+let adminToken = null;
+
+function verificarAutenticacion() {
+  adminToken = localStorage.getItem('adminToken');
+  
+  if (!adminToken) {
+    const token = prompt('🔐 Acceso restringido\n\nIngresa el token de administrador:');
+    if (!token || token !== 'admin-secure-token-2024') {
+      alert('❌ Token incorrecto. Acceso denegado.');
+      window.location.href = '/';
+      return false;
+    }
+    localStorage.setItem('adminToken', token);
+    adminToken = token;
+  }
+  return true;
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('adminToken');
+  window.location.reload();
+}
+
 function mostrarEstado(mensaje, tipo = 'success') {
   const status = document.getElementById('status');
   status.className = tipo;
@@ -89,6 +113,11 @@ function mostrarEstado(mensaje, tipo = 'success') {
   setTimeout(() => {
     status.style.display = 'none';
   }, 3000);
+}
+
+// Verificar autenticación al cargar
+if (!verificarAutenticacion()) {
+  throw new Error('Acceso no autorizado');
 }
 
 async function descargarPlanilla() {
@@ -137,10 +166,11 @@ async function verEstadisticas() {
     
     // Intentar conectar con las funciones de Netlify
     try {
-      const response = await fetch('/.netlify/functions/save-transaction', {
+      const response = await fetch('/.netlify/functions/database', {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
         }
       });
       
@@ -164,6 +194,7 @@ async function verEstadisticas() {
         throw new Error('Funciones no disponibles');
       }
     } catch (fetchError) {
+      console.log('Funciones no disponibles, usando datos de ejemplo:', fetchError);
       // Si las funciones no están disponibles, mostrar datos de ejemplo
       setTimeout(() => {
         mostrarDatosEjemplo();
