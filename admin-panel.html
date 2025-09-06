@@ -120,12 +120,69 @@ if (!verificarAutenticacion()) {
   throw new Error('Acceso no autorizado');
 }
 
+async function cargarTransacciones() {
+  try {
+    mostrarEstado('Cargando transacciones...', 'success');
+    
+    const response = await fetch('/.netlify/functions/database', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Actualizar estadísticas
+      document.getElementById('totalTransactions').textContent = data.total || 0;
+      document.getElementById('totalAmount').textContent = `$${(data.totalAmount || 0).toFixed(2)}`;
+      document.getElementById('totalFees').textContent = `$${(data.totalFees || 0).toFixed(2)}`;
+      
+      // Mostrar transacciones
+      if (data.transactions && data.transactions.length > 0) {
+        mostrarTransacciones(data.transactions);
+        mostrarEstado('✅ Transacciones cargadas correctamente', 'success');
+      } else {
+        mostrarSinTransacciones();
+        mostrarEstado('📋 No hay transacciones disponibles', 'success');
+      }
+    } else {
+      throw new Error('Error al cargar transacciones');
+    }
+  } catch (error) {
+    console.error('Error cargando transacciones:', error);
+    mostrarDatosEjemplo();
+    mostrarEstado('⚠️ Error al conectar con la base de datos. Mostrando datos de ejemplo.', 'error');
+  }
+}
+
+function limpiarDatos() {
+  if (confirm('¿Estás seguro de que quieres limpiar todos los datos mostrados?')) {
+    document.getElementById('totalTransactions').textContent = '0';
+    document.getElementById('totalAmount').textContent = '$0.00';
+    document.getElementById('totalFees').textContent = '$0.00';
+    
+    const transactionsList = document.getElementById('transactionsList');
+    if (transactionsList) {
+      transactionsList.innerHTML = '<p style="color: var(--muted);">No hay transacciones para mostrar.</p>';
+    }
+    
+    mostrarEstado('🗑️ Datos limpiados', 'success');
+  }
+}
+
 async function descargarPlanilla() {
   try {
     mostrarEstado('Descargando planilla...', 'success');
     
-    const response = await fetch('/.netlify/functions/save-transaction?format=csv', {
-      method: 'GET'
+    const response = await fetch('/.netlify/functions/database?format=csv', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
     });
     
     if (response.ok) {
@@ -313,8 +370,12 @@ async function descargarPDF() {
     
     if (isNetlify) {
       try {
-        const response = await fetch('/.netlify/functions/save-transaction', {
-          method: 'GET'
+        const response = await fetch('/.netlify/functions/database', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          }
         });
         
         if (response.ok) {
