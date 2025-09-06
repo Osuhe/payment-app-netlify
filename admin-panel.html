@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panel de Administración - Transacciones</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#0b1220; --border:#1f2937; --muted:#94a3b8; --ink:#e5e7eb;
+    --accent:#4f46e5; --ok:#16a34a;
+  }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; padding:0; width: 100%; min-height: 100%; background:var(--bg); color:var(--ink);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .wrap{ width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,.25); margin-bottom: 20px; }
+  h1{ margin:0 0 20px; font-size:28px; color:#cbd5e1; }
+  .btn{ background:var(--accent); color:white; padding:12px 24px; border:none; border-radius:8px; 
+    cursor:pointer; font-size:14px; margin:10px 5px 10px 0; text-decoration:none; display:inline-block; }
+  .btn:hover{ opacity:0.9; }
+  .btn-success{ background:var(--ok); }
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px; }
+  .stat-card{ background:var(--card); border:1px solid var(--border); padding:15px; border-radius:8px; text-align:center; }
+  .stat-number{ font-size:24px; font-weight:bold; color:var(--accent); }
+  .stat-label{ font-size:12px; color:var(--muted); margin-top:5px; }
+  #status{ padding:10px; border-radius:5px; margin:10px 0; }
+  .success{ background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+  .error{ background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+    <h1>📊 Panel de Administración</h1>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" id="totalTransactions">0</div>
+        <div class="stat-label">Total Transacciones</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalAmount">$0</div>
+        <div class="stat-label">Monto Total Procesado</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalFees">$0</div>
+        <div class="stat-label">Total en Tarifas</div>
+      </div>
+    </div>
+
+    <div id="status"></div>
+    
+    <button class="btn btn-success" onclick="descargarPlanilla()">
+      📥 Descargar CSV
+    </button>
+    
+    <button class="btn btn-success" onclick="descargarPDF()">
+      📄 Descargar PDF
+    </button>
+    
+    <button class="btn" onclick="verEstadisticas()">
+      📈 Actualizar Estadísticas
+    </button>
+    
+    <a href="index.html" class="btn">
+      ← Volver al Formulario
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>📋 Últimas Transacciones</h2>
+    <div id="transactionsList">
+      <p style="color: var(--muted);">Cargando transacciones...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function mostrarEstado(mensaje, tipo = 'success') {
+  const status = document.getElementById('status');
+  status.className = tipo;
+  status.textContent = mensaje;
+  status.style.display = 'block';
+  
+  setTimeout(() => {
+    status.style.display = 'none';
+  }, 3000);
+}
+
+async function descargarPlanilla() {
+  try {
+    mostrarEstado('Descargando planilla...', 'success');
+    
+    const response = await fetch('/.netlify/functions/save-transaction?format=csv', {
+      method: 'GET'
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transacciones_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      mostrarEstado('✅ Planilla descargada correctamente', 'success');
+    } else {
+      throw new Error('Error al descargar planilla');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    mostrarEstado('❌ Error al descargar planilla: ' + error.message, 'error');
+  }
+}
+
+async function verEstadisticas() {
+  try {
+    mostrarEstado('Cargando estadísticas...', 'success');
+    
+    // Verificar si estamos en el dominio correcto
+    const isNetlify = window.location.hostname.includes('netlify.app');
+    
+    if (!isNetlify) {
+      // Mostrar datos de ejemplo para desarrollo local
+      setTimeout(() => {
+        mostrarDatosEjemplo();
+      }, 500);
+      return;
+    }
+    
+    // Intentar conectar con las funciones de Netlify
+    try {
+      const response = await fetch('/.netlify/functions/save-transaction', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Actualizar estadísticas
+        document.getElementById('totalTransactions').textContent = data.total || 0;
+        document.getElementById('totalAmount').textContent = `$${(data.totalAmount || 0).toFixed(2)}`;
+        document.getElementById('totalFees').textContent = `$${(data.totalFees || 0).toFixed(2)}`;
+        
+        // Mostrar transacciones si existen
+        if (data.transactions && data.transactions.length > 0) {
+          mostrarTransacciones(data.transactions);
+        } else {
+          mostrarSinTransacciones();
+        }
+        
+        mostrarEstado('✅ Estadísticas actualizadas correctamente', 'success');
+      } else {
+        throw new Error('Funciones no disponibles');
+      }
+    } catch (fetchError) {
+      // Si las funciones no están disponibles, mostrar datos de ejemplo
+      setTimeout(() => {
+        mostrarDatosEjemplo();
+        mostrarEstado('📊 Mostrando datos de ejemplo - Las funciones se están desplegando', 'success');
+      }, 500);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    setTimeout(() => {
+      mostrarDatosEjemplo();
+    }, 500);
+  }
+}
+
+function mostrarDatosEjemplo() {
+  // Mostrar datos de ejemplo para desarrollo local
+  document.getElementById('totalTransactions').textContent = '3';
+  document.getElementById('totalAmount').textContent = '$750.00';
+  document.getElementById('totalFees').textContent = '$22.50';
+  
+  // Mostrar transacciones de ejemplo con TODOS los campos
+  const transactionsList = document.getElementById('transactionsList');
+  if (transactionsList) {
+    transactionsList.innerHTML = `
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+        <h4 style="margin: 0 0 10px 0; color: var(--accent);">Transacción #PAY-001</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+          <p><strong>Remitente:</strong> Juan Pérez</p>
+          <p><strong>Teléfono:</strong> +1-555-0123</p>
+          <p><strong>Email:</strong> juan@email.com</p>
+          <p><strong>Documento:</strong> DNI-12345678</p>
+          <p><strong>Beneficiario:</strong> María González</p>
+          <p><strong>Ciudad:</strong> La Habana</p>
+          <p><strong>Moneda:</strong> CUP</p>
+          <p><strong>Tarjeta:</strong> **** **** **** 1234</p>
+          <p><strong>Monto USD:</strong> $250.00</p>
+          <p><strong>A Depositar:</strong> 6,250 CUP</p>
+          <p><strong>Tarifa:</strong> $7.50</p>
+          <p><strong>Notas:</strong> Urgente - Medicinas</p>
+        </div>
+        <p style="margin-top: 10px;"><strong>Fecha:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+      </div>
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+        <h4 style="margin: 0 0 10px 0; color: var(--accent);">Transacción #PAY-002</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+          <p><strong>Remitente:</strong> Carlos López</p>
+          <p><strong>Teléfono:</strong> +1-555-0456</p>
+          <p><strong>Email:</strong> carlos@email.com</p>
+          <p><strong>Documento:</strong> ID-87654321</p>
+          <p><strong>Beneficiario:</strong> Ana Martínez</p>
+          <p><strong>Ciudad:</strong> Santiago de Cuba</p>
+          <p><strong>Moneda:</strong> MLC</p>
+          <p><strong>Tarjeta:</strong> **** **** **** 5678</p>
+          <p><strong>Monto USD:</strong> $300.00</p>
+          <p><strong>A Depositar:</strong> 300 MLC</p>
+          <p><strong>Tarifa:</strong> $9.00</p>
+          <p><strong>Notas:</strong> Cumpleaños familia</p>
+        </div>
+        <p style="margin-top: 10px;"><strong>Fecha:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+      </div>
+    `;
+  }
+  
+  mostrarEstado('📊 Mostrando datos de ejemplo - Haz una transacción real para ver datos reales', 'success');
+}
+
+function mostrarSinTransacciones() {
+  const transactionsList = document.getElementById('transactionsList');
+  if (transactionsList) {
+    transactionsList.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p style="color: var(--muted);">
+          No hay transacciones registradas aún.
+        </p>
+        <p style="color: var(--accent); font-size: 14px;">
+          Realiza un pago de prueba para ver los datos aquí.
+        </p>
+      </div>
+    `;
+  }
+}
+
+function mostrarTransacciones(transactions) {
+  const transactionsList = document.getElementById('transactionsList');
+  if (transactionsList && transactions.length > 0) {
+    transactionsList.innerHTML = transactions.map(t => `
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+        <h4 style="margin: 0 0 10px 0; color: var(--accent);">Transacción #${t['Orden ID'] || 'N/A'}</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+          <p><strong>Remitente:</strong> ${t['Remitente Nombre'] || t.Remitente || 'N/A'}</p>
+          <p><strong>Teléfono:</strong> ${t['Remitente Tel'] || 'N/A'}</p>
+          <p><strong>Email:</strong> ${t['Remitente Email'] || 'N/A'}</p>
+          <p><strong>Documento:</strong> ${t['Remitente Doc'] || 'N/A'}</p>
+          <p><strong>Beneficiario:</strong> ${t['Benef Nombre'] || t.Beneficiario || 'N/A'}</p>
+          <p><strong>Ciudad:</strong> ${t['Benef Ciudad'] || t.Ciudad || 'N/A'}</p>
+          <p><strong>Moneda:</strong> ${t.Entrega || t.Moneda || 'N/A'}</p>
+          <p><strong>Tarjeta:</strong> ${t['Tarjeta Numero'] || 'N/A'}</p>
+          <p><strong>Monto USD:</strong> $${t['Monto USD'] || 0}</p>
+          <p><strong>A Depositar:</strong> ${t['Monto Tarjeta'] || t['Monto Depositar'] || 0} ${t.Entrega || t.Moneda || ''}</p>
+          <p><strong>Tarifa:</strong> $${t.Tarifa || 0}</p>
+          <p><strong>Notas:</strong> ${t.Notas || 'Sin notas'}</p>
+        </div>
+        <p style="margin-top: 10px;"><strong>Fecha:</strong> ${t.Fecha ? new Date(t.Fecha).toLocaleDateString() + ' ' + new Date(t.Fecha).toLocaleTimeString() : 'N/A'}</p>
+      </div>
+    `).join('');
+  }
+}
+
+async function descargarPDF() {
+  try {
+    mostrarEstado('Generando PDF...', 'success');
+    
+    // Verificar si estamos en Netlify y si las funciones están disponibles
+    const isNetlify = window.location.hostname.includes('netlify.app');
+    let data = null;
+    
+    if (isNetlify) {
+      try {
+        const response = await fetch('/.netlify/functions/save-transaction', {
+          method: 'GET'
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error('Funciones no disponibles');
+        }
+      } catch (fetchError) {
+        // Usar datos de ejemplo si las funciones no están disponibles
+        data = crearDatosEjemploPDF();
+      }
+    } else {
+      // Usar datos de ejemplo para desarrollo local
+      data = crearDatosEjemploPDF();
+    }
+    
+    // Crear PDF usando jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape'); // Formato horizontal para más columnas
+    
+    // Título
+    doc.setFontSize(18);
+    doc.text('Reporte de Transacciones - Envíos a Cuba', 20, 20);
+    
+    // Fecha del reporte
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleString()}`, 20, 30);
+    
+    // Estadísticas resumen
+    doc.setFontSize(12);
+    doc.text('Resumen:', 20, 45);
+    doc.setFontSize(10);
+    doc.text(`Total de transacciones: ${data.total || 0}`, 25, 55);
+    doc.text(`Monto total procesado: $${(data.totalAmount || 0).toFixed(2)}`, 25, 62);
+    doc.text(`Total en tarifas: $${(data.totalFees || 0).toFixed(2)}`, 25, 69);
+    
+    if (data.transactions && data.transactions.length > 0) {
+      // Preparar datos para la tabla con TODOS los campos incluyendo hora
+      const tableData = data.transactions.map(t => [
+        t.Fecha ? new Date(t.Fecha).toLocaleDateString() : new Date().toLocaleDateString(),
+        t.Fecha ? new Date(t.Fecha).toLocaleTimeString() : new Date().toLocaleTimeString(),
+        t['Orden ID'] || t.ordenId || '',
+        t['Remitente Nombre'] || t.Remitente || '',
+        t['Remitente Tel'] || '',
+        t['Remitente Email'] || '',
+        t['Benef Nombre'] || t.Beneficiario || '',
+        t['Benef Ciudad'] || t.Ciudad || '',
+        t.Entrega || t.Moneda || '',
+        t['Tarjeta Numero'] || '',
+        `$${t['Monto USD'] || 0}`,
+        `${t['Monto Tarjeta'] || t['Monto Depositar'] || 0}`,
+        `$${t.Tarifa || 0}`,
+        t.Notas || ''
+      ]);
+      
+      // Crear tabla con todas las columnas incluyendo hora
+      doc.autoTable({
+        head: [['Fecha', 'Hora', 'Orden', 'Remitente', 'Teléfono', 'Email', 'Beneficiario', 'Ciudad', 'Moneda', 'Tarjeta', 'USD', 'Depositar', 'Tarifa', 'Notas']],
+        body: tableData,
+        startY: 80,
+        styles: { fontSize: 6 },
+        headStyles: { fillColor: [79, 70, 229], fontSize: 6 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { left: 5, right: 5 },
+        columnStyles: {
+          0: { cellWidth: 18 }, // Fecha
+          1: { cellWidth: 16 }, // Hora
+          2: { cellWidth: 16 }, // Orden
+          3: { cellWidth: 22 }, // Remitente
+          4: { cellWidth: 20 }, // Teléfono
+          5: { cellWidth: 25 }, // Email
+          6: { cellWidth: 22 }, // Beneficiario
+          7: { cellWidth: 18 }, // Ciudad
+          8: { cellWidth: 12 }, // Moneda
+          9: { cellWidth: 25 }, // Tarjeta
+          10: { cellWidth: 12 }, // USD
+          11: { cellWidth: 15 }, // Depositar
+          12: { cellWidth: 12 }, // Tarifa
+          13: { cellWidth: 25 }  // Notas
+        }
+      });
+    } else {
+      doc.text('No hay transacciones registradas.', 20, 90);
+    }
+    
+    // Descargar PDF
+    const fileName = `transacciones_completo_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    
+    mostrarEstado('✅ PDF con todos los datos descargado correctamente', 'success');
+  } catch (error) {
+    console.error('Error:', error);
+    mostrarEstado('❌ Error al generar PDF: ' + error.message, 'error');
+  }
+}
+
+function crearDatosEjemploPDF() {
+  const now = new Date();
+  const fecha1 = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 horas atrás
+  const fecha2 = new Date(now.getTime() - 1 * 60 * 60 * 1000); // 1 hora atrás
+  const fecha3 = new Date(now.getTime() - 30 * 60 * 1000); // 30 minutos atrás
+  
+  return {
+    total: 3,
+    totalAmount: 750,
+    totalFees: 22.50,
+    transactions: [
+      {
+        'Orden ID': 'PAY-001',
+        'Remitente Nombre': 'Juan Pérez',
+        'Remitente Tel': '+1-555-0123',
+        'Remitente Email': 'juan@email.com',
+        'Benef Nombre': 'María González',
+        'Benef Ciudad': 'La Habana',
+        'Entrega': 'CUP',
+        'Tarjeta Numero': '1234567890123456',
+        'Monto USD': 250,
+        'Monto Tarjeta': 6250,
+        'Tarifa': 7.50,
+        'Notas': 'Urgente - Medicinas',
+        'Fecha': fecha1.toISOString()
+      },
+      {
+        'Orden ID': 'PAY-002',
+        'Remitente Nombre': 'Carlos López',
+        'Remitente Tel': '+1-555-0456',
+        'Remitente Email': 'carlos@email.com',
+        'Benef Nombre': 'Ana Martínez',
+        'Benef Ciudad': 'Santiago de Cuba',
+        'Entrega': 'MLC',
+        'Tarjeta Numero': '9876543210987654',
+        'Monto USD': 300,
+        'Monto Tarjeta': 300,
+        'Tarifa': 9.00,
+        'Notas': 'Cumpleaños familia',
+        'Fecha': fecha2.toISOString()
+      },
+      {
+        'Orden ID': 'PAY-003',
+        'Remitente Nombre': 'Luis Rodríguez',
+        'Remitente Tel': '+1-555-0789',
+        'Remitente Email': 'luis@email.com',
+        'Benef Nombre': 'Carmen Silva',
+        'Benef Ciudad': 'Camagüey',
+        'Entrega': 'CUP',
+        'Tarjeta Numero': '5555444433332222',
+        'Monto USD': 200,
+        'Monto Tarjeta': 5000,
+        'Tarifa': 6.00,
+        'Notas': 'Gastos médicos',
+        'Fecha': fecha3.toISOString()
+      }
+    ]
+  };
+}
+
+// Cargar datos al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+  verEstadisticas();
+});
+</script>
+
+</body>
+</html>

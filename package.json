@@ -1,0 +1,15 @@
+{
+  "name": "cuba-money-transfer",
+  "version": "1.0.0",
+  "description": "Sistema de transferencia de dinero a Cuba",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["cuba", "money-transfer", "paypal"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  }
+}

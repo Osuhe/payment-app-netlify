@@ -1,0 +1,10 @@
+[build]
+  command = "npm install @paypal/checkout-server-sdk"
+  functions = "netlify/functions"
+  publish = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+[dev]
+  targetPort = 8888
