@@ -828,6 +828,30 @@
       // Obtener datos reales del formulario
       const formData = getAllFormData();
       
+      // Usar datos de prueba si los campos están vacíos
+      const testData = {
+        nombre_remitente: formData.nombre_remitente || 'Usuario Prueba',
+        apellido_remitente: formData.apellido_remitente || 'Test',
+        telefono_remitente: formData.telefono_remitente || '+1234567890',
+        email_remitente: formData.email_remitente || 'test@example.com',
+        benef_nombre: formData.benef_nombre || 'Beneficiario Prueba',
+        benef_ciudad: formData.benef_ciudad || 'La Habana',
+        entrega: formData.entrega || 'CUP',
+        tarjeta_numero: formData.tarjeta_numero || '9999999999999999',
+        tarjeta_numero_remitente: formData.tarjeta_numero_remitente || '4111111111111111',
+        tarjeta_vencimiento: formData.tarjeta_vencimiento || '12/25',
+        tarjeta_cvv: formData.tarjeta_cvv || '123',
+        tarjeta_nombre: formData.tarjeta_nombre || 'Test User',
+        direccion_facturacion: formData.direccion_facturacion || '123 Test St',
+        codigo_postal: formData.codigo_postal || '12345',
+        pais_facturacion: formData.pais_facturacion || 'US',
+        monto_usd: formData.monto_usd || 100,
+        tarifa: formData.tarifa || 5,
+        monto_total: formData.monto_total || 105,
+        orden_id: formData.orden_id || 'TEST-' + Date.now(),
+        notas: formData.notas || 'Transacción de prueba'
+      };
+      
       // Crear datos de PayPal simulados
       const paypalSimulado = {
         id: 'TEST-' + Date.now(),
@@ -839,7 +863,7 @@
       
       // Usar la misma función que usa el pago real
       const transactionData = {
-        formulario: formData,
+        formulario: testData,
         paypal: paypalSimulado,
         fecha_local: new Date().toLocaleString()
       };
