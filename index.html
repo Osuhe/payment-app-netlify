@@ -718,9 +718,18 @@
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer admin-secure-token-2024'
         },
-        body: JSON.stringify(supabaseData)
+        body: JSON.stringify({
+          action: 'save_transaction',
+          transactionData: {
+            formulario: transactionData.formulario,
+            paypal: transactionData.paypal,
+            fecha_local: transactionData.fecha_local,
+            documento_url: transactionData.formulario.documento_url
+          }
+        })
       });
 
       if (response.ok) {
