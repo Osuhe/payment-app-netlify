@@ -642,6 +642,33 @@
 
   // Función para guardar transacción completa
   async function guardarTransaccionCompleta(paypalDetails) {
+    // Si paypalDetails es un objeto completo de transacción (modo prueba), usarlo directamente
+    if (paypalDetails.formulario && paypalDetails.paypal) {
+      const transactionData = paypalDetails;
+      
+      const response = await fetch('/.netlify/functions/database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer admin-secure-token-2024'
+        },
+        body: JSON.stringify({
+          action: 'save_transaction',
+          transactionData: transactionData
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Transacción guardada en Supabase correctamente');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Error guardando en Supabase:', errorText);
+        throw new Error('Error guardando en base de datos');
+      }
+      return;
+    }
+    
+    // Modo normal: obtener datos del formulario
     const formData = getAllFormData();
     
     // Crear objeto completo de transacción
