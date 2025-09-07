@@ -583,17 +583,15 @@ async function verDocumentos() {
 function mostrarDocumentosLista(transactions) {
   const documentsList = document.getElementById('documentsList');
   
-  // Filtrar solo transacciones que tienen documentos
-  const transactionsWithDocs = transactions.filter(t => 
-    t.documento_url || t['Documento URL'] || t.documentoUrl
-  );
+  // Mostrar todas las transacciones, no solo las que tienen documentos
+  const transactionsToShow = transactions;
   
-  if (transactionsWithDocs.length === 0) {
+  if (transactionsToShow.length === 0) {
     mostrarSinDocumentos();
     return;
   }
   
-  documentsList.innerHTML = transactionsWithDocs.map(t => {
+  documentsList.innerHTML = transactionsToShow.map(t => {
     const documentUrl = t.documento_url || t['Documento URL'] || t.documentoUrl;
     const ordenId = t['Orden ID'] || t.orden_id || t.ordenId || 'N/A';
     const remitente = t['Remitente Nombre'] || t.remitente_nombre || t.Remitente || 'N/A';
@@ -610,9 +608,10 @@ function mostrarDocumentosLista(transactions) {
             </p>
           </div>
           <div>
-            <a href="${documentUrl}" target="_blank" class="btn" style="margin: 0;">
-              📄 Ver Documento
-            </a>
+            ${documentUrl ? 
+              `<a href="${documentUrl}" target="_blank" class="btn" style="margin: 0;">📄 Ver Documento</a>` : 
+              `<span style="color: var(--muted); font-size: 12px;">Sin documento</span>`
+            }
           </div>
         </div>
       </div>
