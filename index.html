@@ -309,17 +309,32 @@
 </div>
 
 <script>
+  // Cargar configuración desde función serverless
+  async function loadConfig() {
+    try {
+      const response = await fetch('/.netlify/functions/config');
+      const config = await response.json();
+      window.PAYPAL_CLIENT_ID = config.paypalClientId;
+      loadPayPalSDK();
+    } catch (error) {
+      console.error('Error cargando configuración:', error);
+      // Fallback para desarrollo local
+      window.PAYPAL_CLIENT_ID = 'PAYPAL_CLIENT_ID_NOT_SET';
+      loadPayPalSDK();
+    }
+  }
+  
   // Cargar PayPal SDK directamente (más confiable)
   function loadPayPalSDK() {
     console.log('Cargando PayPal SDK...');
     const script = document.createElement('script');
-    script.src = 'https://www.paypal.com/sdk/js?client-id=ASQfwQYT9PH-THXDUkeq1FCD9l8tBGqo3J69N5HZ-FhfJpnVpORzWuo07n3i8LxMdVasrCCep_D-f-1q&currency=USD&locale=es_ES';
+    script.src = `https://www.paypal.com/sdk/js?client-id=${window.PAYPAL_CLIENT_ID || 'PAYPAL_CLIENT_ID_NOT_SET'}&currency=USD&locale=es_ES`;
     script.onload = () => console.log('PayPal SDK cargado exitosamente');
     script.onerror = () => console.error('Error cargando PayPal SDK');
     document.head.appendChild(script);
   }
   
-  loadPayPalSDK();
+  loadConfig();
 </script>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
