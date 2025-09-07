@@ -811,7 +811,8 @@
           const response = await fetch('/.netlify/functions/database', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer admin-secure-token-2024'
             },
             body: JSON.stringify({
               action: 'upload_image',
