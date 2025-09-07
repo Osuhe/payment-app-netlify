@@ -67,6 +67,14 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify(result)
         };
+      } else if (body.action === 'clear_all_transactions') {
+        // Limpiar todas las transacciones
+        const result = await clearAllTransactions();
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(result)
+        };
       } else if (body.action === 'save_transaction') {
         try {
           console.log('=== GUARDANDO TRANSACCIÓN ===');
@@ -115,7 +123,7 @@ exports.handler = async (event, context) => {
       };
     }
   } catch (error) {
-    console.error('Error en database function:', error);
+    console.error('Error en función database:', error);
     return {
       statusCode: 500,
       headers,
@@ -126,6 +134,33 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
+// Función para limpiar todas las transacciones
+async function clearAllTransactions() {
+  try {
+    console.log('🗑️ Limpiando todas las transacciones...');
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .delete()
+      .neq('id', 0); // Eliminar todas las filas (neq 0 significa "no igual a 0", que siempre es true)
+    
+    if (error) {
+      console.error('Error eliminando transacciones:', error);
+      throw error;
+    }
+    
+    console.log('✅ Todas las transacciones eliminadas');
+    return { 
+      success: true, 
+      message: 'Todas las transacciones han sido eliminadas',
+      deleted_count: data?.length || 'unknown'
+    };
+  } catch (error) {
+    console.error('Error en clearAllTransactions:', error);
+    throw error;
+  }
+}
 
 // Crear nueva transacción
 async function createTransaction(event, headers) {
