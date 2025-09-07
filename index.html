@@ -757,12 +757,13 @@
           console.log('📤 Iniciando subida de documento a Supabase Storage...');
           const imageData = e.target.result;
           
-          const response = await fetch('/.netlify/functions/upload-image', {
+          const response = await fetch('/.netlify/functions/database', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+              action: 'upload_image',
               imageData: imageData,
               fileName: file.name,
               transactionId: transactionId
