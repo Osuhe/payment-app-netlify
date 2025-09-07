@@ -888,9 +888,9 @@
         notas: formData.notas || 'Transacción de prueba'
       };
       
-      // Crear datos de PayPal simulados
+      // Crear datos de PayPal simulados con ID único
       const paypalSimulado = {
-        id: 'TEST-' + Date.now(),
+        id: 'TEST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
         status: 'COMPLETED',
         payer: {
           email_address: formData.remitente_email || 'test@example.com'
