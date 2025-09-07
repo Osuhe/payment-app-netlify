@@ -352,7 +352,7 @@ async function uploadImageToSupabase(imageData, fileName, transactionId) {
     
     // Subir a Supabase Storage
     const { data, error } = await supabase.storage
-      .from('documentos')
+      .from('Documentos')
       .upload(uniqueFileName, buffer, {
         contentType: `image/${fileExtension}`,
         upsert: false
@@ -365,7 +365,7 @@ async function uploadImageToSupabase(imageData, fileName, transactionId) {
 
     // Obtener URL pública del archivo
     const { data: urlData } = supabase.storage
-      .from('documentos')
+      .from('Documentos')
       .getPublicUrl(uniqueFileName);
 
     console.log('✅ Imagen subida correctamente:', urlData.publicUrl);
