@@ -11,14 +11,15 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 exports.handler = async (event, context) => {
-  // Headers CORS
+  // Configurar CORS
   const headers = {
-    'Access-Control-Allow-Origin': process.env.URL || 'https://stalwart-jelly-9deaab.netlify.app',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Type': 'application/json'
   };
 
-  // Manejar preflight OPTIONS
+  // Manejar preflight OPTIONS request
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -28,23 +29,45 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const method = event.httpMethod;
-    const path = event.path;
+    // Verificar autenticación para admin
+    const authHeader = event.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Token de autorización requerido' })
+      };
+    }
 
-    switch (method) {
-      case 'POST':
-        return await createTransaction(event, headers);
-      case 'GET':
-        return await getTransactions(event, headers);
-      default:
-        return {
-          statusCode: 405,
-          headers,
-          body: JSON.stringify({ error: 'Método no permitido' })
-        };
+    const token = authHeader.split(' ')[1];
+    if (token !== process.env.ADMIN_TOKEN) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'Token de autorización inválido' })
+      };
+    }
+
+    if (event.httpMethod === 'GET') {
+      return await getTransactions();
+    } else if (event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body);
+      
+      // Verificar si es una solicitud para agregar datos de prueba
+      if (body.action === 'add_sample_data') {
+        return await addSampleData(body.data);
+      } else {
+        return await saveTransaction(event.body);
+      }
+    } else {
+      return {
+        statusCode: 405,
+        headers,
+        body: JSON.stringify({ error: 'Método no permitido' })
+      };
     }
   } catch (error) {
-    console.error('Error en función database:', error);
+    console.error('Error en database function:', error);
     return {
       statusCode: 500,
       headers,
@@ -193,7 +216,8 @@ async function getTransactions(event, headers) {
         paypal_status,
         fecha_transaccion,
         fecha_local,
-        notas
+        notas,
+        documento_url
       `)
       .order('fecha_transaccion', { ascending: false });
 
@@ -212,10 +236,9 @@ async function getTransactions(event, headers) {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: true,
-        transactions: data,
-        count: data.length
+        transactions: data || []
       })
     };
 
@@ -226,6 +249,57 @@ async function getTransactions(event, headers) {
       headers,
       body: JSON.stringify({ 
         error: 'Error obteniendo transacciones',
+        details: error.message 
+      })
+    };
+  }
+}
+
+async function addSampleData(sampleTransactions) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    console.log('Insertando datos de prueba:', sampleTransactions.length, 'transacciones');
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert(sampleTransactions);
+
+    if (error) {
+      console.error('Error de Supabase:', error);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Error al insertar datos de prueba',
+          details: error.message 
+        })
+      };
+    }
+
+    console.log('Datos de prueba insertados correctamente');
+    
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        message: 'Datos de prueba insertados correctamente',
+        insertedCount: sampleTransactions.length
+      })
+    };
+  } catch (error) {
+    console.error('Error insertando datos de prueba:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Error interno al insertar datos de prueba',
         details: error.message 
       })
     };

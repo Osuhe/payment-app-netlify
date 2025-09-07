@@ -56,6 +56,8 @@
     
     <div style="margin: 20px 0;">
       <button class="btn" onclick="cargarTransacciones()">🔄 Cargar Datos</button>
+      <button class="btn" onclick="verDocumentos()">📄 Ver Documentos</button>
+      <button class="btn" onclick="cargarDatosPrueba()">📋 Cargar Datos de Prueba</button>
       <button class="btn" onclick="descargarPDF()">📄 Exportar PDF</button>
       <button class="btn" onclick="descargarPlanilla()">📊 Descargar Planilla</button>
       <button class="btn" onclick="limpiarDatos()">🗑️ Limpiar Datos</button>
@@ -75,6 +77,13 @@
     <h2>📋 Últimas Transacciones</h2>
     <div id="transactionsList">
       <p style="color: var(--muted);">Cargando transacciones...</p>
+    </div>
+  </div>
+
+  <div class="card" id="documentsSection" style="display: none;">
+    <h2>📄 Documentos Subidos</h2>
+    <div id="documentsList">
+      <p style="color: var(--muted);">Cargando documentos...</p>
     </div>
   </div>
 </div>
@@ -344,15 +353,16 @@ function mostrarTransacciones(transactions) {
           <p><strong>Remitente:</strong> ${t['Remitente Nombre'] || t.Remitente || 'N/A'}</p>
           <p><strong>Teléfono:</strong> ${t['Remitente Tel'] || 'N/A'}</p>
           <p><strong>Email:</strong> ${t['Remitente Email'] || 'N/A'}</p>
-          <p><strong>Documento:</strong> ${t['Remitente Doc'] || 'N/A'}</p>
+          <p><strong>Documento:</strong> ${t['Documento'] || 'N/A'}</p>
           <p><strong>Beneficiario:</strong> ${t['Benef Nombre'] || t.Beneficiario || 'N/A'}</p>
           <p><strong>Ciudad:</strong> ${t['Benef Ciudad'] || t.Ciudad || 'N/A'}</p>
           <p><strong>Moneda:</strong> ${t.Entrega || t.Moneda || 'N/A'}</p>
           <p><strong>Tarjeta:</strong> ${t['Tarjeta Numero'] || 'N/A'}</p>
           <p><strong>Monto USD:</strong> $${t['Monto USD'] || 0}</p>
-          <p><strong>A Depositar:</strong> ${t['Monto Tarjeta'] || t['Monto Depositar'] || 0} ${t.Entrega || t.Moneda || ''}</p>
+          <p><strong>A Depositar:</strong> ${t['Monto Tarjeta'] || t['Monto Depositar'] || 0}</p>
           <p><strong>Tarifa:</strong> $${t.Tarifa || 0}</p>
-          <p><strong>Notas:</strong> ${t.Notas || 'Sin notas'}</p>
+          <p><strong>Notas:</strong> ${t.Notas || 'N/A'}</p>
+          ${t.documento_url ? `<p><strong>Documento ID:</strong> <a href="${t.documento_url}" target="_blank" style="color: var(--accent);">📄 Ver documento</a></p>` : ''}
         </div>
         <p style="margin-top: 10px;"><strong>Fecha:</strong> ${t.Fecha ? new Date(t.Fecha).toLocaleDateString() + ' ' + new Date(t.Fecha).toLocaleTimeString() : 'N/A'}</p>
       </div>
@@ -530,6 +540,290 @@ function crearDatosEjemploPDF() {
       }
     ]
   };
+}
+
+async function verDocumentos() {
+  try {
+    mostrarEstado('Cargando documentos...', 'success');
+    
+    const documentsSection = document.getElementById('documentsSection');
+    documentsSection.style.display = 'block';
+    
+    const response = await fetch('/.netlify/functions/database', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.transactions && data.transactions.length > 0) {
+        mostrarDocumentosLista(data.transactions);
+        mostrarEstado('✅ Documentos cargados correctamente', 'success');
+      } else {
+        mostrarSinDocumentos();
+        mostrarEstado('📄 No hay documentos disponibles', 'success');
+      }
+    } else {
+      const errorText = await response.text();
+      console.error('Response status:', response.status);
+      console.error('Response error:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error cargando documentos:', error);
+    mostrarDocumentosEjemplo();
+    mostrarEstado('⚠️ Error al conectar con la base de datos. Mostrando datos de ejemplo.', 'error');
+  }
+}
+
+function mostrarDocumentosLista(transactions) {
+  const documentsList = document.getElementById('documentsList');
+  
+  // Filtrar solo transacciones que tienen documentos
+  const transactionsWithDocs = transactions.filter(t => 
+    t.documento_url || t['Documento URL'] || t.documentoUrl
+  );
+  
+  if (transactionsWithDocs.length === 0) {
+    mostrarSinDocumentos();
+    return;
+  }
+  
+  documentsList.innerHTML = transactionsWithDocs.map(t => {
+    const documentUrl = t.documento_url || t['Documento URL'] || t.documentoUrl;
+    const ordenId = t['Orden ID'] || t.orden_id || t.ordenId || 'N/A';
+    const remitente = t['Remitente Nombre'] || t.remitente_nombre || t.Remitente || 'N/A';
+    const fecha = t.Fecha || t.fecha_transaccion || t.created_at;
+    
+    return `
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h4 style="margin: 0 0 5px 0; color: var(--accent);">Orden #${ordenId}</h4>
+            <p style="margin: 0; font-size: 14px; color: var(--muted);">
+              <strong>Remitente:</strong> ${remitente}<br>
+              <strong>Fecha:</strong> ${fecha ? new Date(fecha).toLocaleDateString() + ' ' + new Date(fecha).toLocaleTimeString() : 'N/A'}
+            </p>
+          </div>
+          <div>
+            <a href="${documentUrl}" target="_blank" class="btn" style="margin: 0;">
+              📄 Ver Documento
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function mostrarSinDocumentos() {
+  const documentsList = document.getElementById('documentsList');
+  documentsList.innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <p style="color: var(--muted);">
+        No hay documentos subidos aún.
+      </p>
+      <p style="color: var(--accent); font-size: 14px;">
+        Los documentos aparecerán aquí cuando los usuarios suban archivos de identificación.
+      </p>
+    </div>
+  `;
+}
+
+function mostrarDocumentosEjemplo() {
+  const documentsList = document.getElementById('documentsList');
+  documentsList.innerHTML = `
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h4 style="margin: 0 0 5px 0; color: var(--accent);">Orden #PAY-001</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--muted);">
+            <strong>Remitente:</strong> Juan Pérez<br>
+            <strong>Fecha:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+          </p>
+        </div>
+        <div>
+          <a href="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop&crop=face" target="_blank" class="btn" style="margin: 0;">
+            📄 Ver Documento (Ejemplo)
+          </a>
+        </div>
+      </div>
+    </div>
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h4 style="margin: 0 0 5px 0; color: var(--accent);">Orden #PAY-002</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--muted);">
+            <strong>Remitente:</strong> Carlos López<br>
+            <strong>Fecha:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+          </p>
+        </div>
+        <div>
+          <a href="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop&crop=face" target="_blank" class="btn" style="margin: 0;">
+            📄 Ver Documento (Ejemplo)
+          </a>
+        </div>
+      </div>
+    </div>
+    <div style="background: var(--warning); border: 1px solid #fbbf24; border-radius: 8px; padding: 15px; margin-top: 15px;">
+      <p style="margin: 0; color: #92400e; text-align: center;">
+        ⚠️ <strong>Estos son datos de ejemplo.</strong><br>
+        Haz clic en "📋 Cargar Datos de Prueba" para agregar transacciones reales con documentos.
+      </p>
+    </div>
+  `;
+}
+
+async function cargarDatosPrueba() {
+  try {
+    mostrarEstado('Cargando datos de prueba...', 'success');
+    
+    // Datos de ejemplo con documentos
+    const sampleData = {
+      action: 'add_sample_data',
+      data: [
+        {
+          paypal_transaction_id: 'PAYID-SAMPLE-001',
+          orden_id: 'ORD-001-2024',
+          remitente_nombre: 'Juan',
+          remitente_apellido: 'Pérez',
+          remitente_telefono: '+1-555-0123',
+          remitente_email: 'juan.perez@email.com',
+          beneficiario_nombre: 'María González',
+          beneficiario_ciudad: 'La Habana',
+          tarjeta_destinatario: '9205123456789012',
+          moneda_entrega: 'CUP',
+          tarjeta_pago: '**** **** **** 1234',
+          tarjeta_vencimiento: '**/**',
+          tarjeta_cvv: '***',
+          tarjeta_nombre: 'Juan Perez',
+          direccion_facturacion: '123 Main St, Miami, FL',
+          codigo_postal: '33101',
+          pais_facturacion: 'US',
+          monto_usd: 250.00,
+          tarifa: 7.50,
+          monto_total: 257.50,
+          paypal_status: 'COMPLETED',
+          paypal_payer_email: 'juan.perez@email.com',
+          paypal_amount: 257.50,
+          fecha_transaccion: new Date().toISOString(),
+          fecha_local: new Date().toLocaleString(),
+          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          url_origen: 'https://stalwart-jelly-9deaab.netlify.app',
+          notas: 'Envío urgente para medicinas',
+          documento_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop&crop=face',
+          datos_completos: {
+            tipo_documento: 'Pasaporte',
+            numero_documento: 'A12345678',
+            fecha_vencimiento: '2030-12-31'
+          }
+        },
+        {
+          paypal_transaction_id: 'PAYID-SAMPLE-002',
+          orden_id: 'ORD-002-2024',
+          remitente_nombre: 'Carlos',
+          remitente_apellido: 'López',
+          remitente_telefono: '+1-555-0456',
+          remitente_email: 'carlos.lopez@email.com',
+          beneficiario_nombre: 'Ana Martínez',
+          beneficiario_ciudad: 'Santiago de Cuba',
+          tarjeta_destinatario: '9205987654321098',
+          moneda_entrega: 'MLC',
+          tarjeta_pago: '**** **** **** 5678',
+          tarjeta_vencimiento: '**/**',
+          tarjeta_cvv: '***',
+          tarjeta_nombre: 'Carlos Lopez',
+          direccion_facturacion: '456 Ocean Dr, Miami Beach, FL',
+          codigo_postal: '33139',
+          pais_facturacion: 'US',
+          monto_usd: 300.00,
+          tarifa: 9.00,
+          monto_total: 309.00,
+          paypal_status: 'COMPLETED',
+          paypal_payer_email: 'carlos.lopez@email.com',
+          paypal_amount: 309.00,
+          fecha_transaccion: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          fecha_local: new Date(Date.now() - 2 * 60 * 60 * 1000).toLocaleString(),
+          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          url_origen: 'https://stalwart-jelly-9deaab.netlify.app',
+          notas: 'Cumpleaños de la familia',
+          documento_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop&crop=face',
+          datos_completos: {
+            tipo_documento: 'Licencia de Conducir',
+            numero_documento: 'DL987654321',
+            fecha_vencimiento: '2028-06-15'
+          }
+        },
+        {
+          paypal_transaction_id: 'PAYID-SAMPLE-003',
+          orden_id: 'ORD-003-2024',
+          remitente_nombre: 'Luis',
+          remitente_apellido: 'Rodríguez',
+          remitente_telefono: '+1-555-0789',
+          remitente_email: 'luis.rodriguez@email.com',
+          beneficiario_nombre: 'Carmen Silva',
+          beneficiario_ciudad: 'Camagüey',
+          tarjeta_destinatario: '9205555444433332',
+          moneda_entrega: 'CUP',
+          tarjeta_pago: '**** **** **** 9999',
+          tarjeta_vencimiento: '**/**',
+          tarjeta_cvv: '***',
+          tarjeta_nombre: 'Luis Rodriguez',
+          direccion_facturacion: '789 Biscayne Blvd, Miami, FL',
+          codigo_postal: '33132',
+          pais_facturacion: 'US',
+          monto_usd: 200.00,
+          tarifa: 6.00,
+          monto_total: 206.00,
+          paypal_status: 'COMPLETED',
+          paypal_payer_email: 'luis.rodriguez@email.com',
+          paypal_amount: 206.00,
+          fecha_transaccion: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          fecha_local: new Date(Date.now() - 30 * 60 * 1000).toLocaleString(),
+          user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+          url_origen: 'https://stalwart-jelly-9deaab.netlify.app',
+          notas: 'Gastos médicos urgentes',
+          documento_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=300&fit=crop&crop=face',
+          datos_completos: {
+            tipo_documento: 'Cédula de Identidad',
+            numero_documento: 'CI123456789',
+            fecha_vencimiento: '2029-03-20'
+          }
+        }
+      ]
+    };
+    
+    const response = await fetch('/.netlify/functions/database', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
+      body: JSON.stringify(sampleData)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      mostrarEstado('✅ Datos de prueba cargados correctamente', 'success');
+      
+      // Recargar estadísticas después de insertar datos
+      setTimeout(() => {
+        verEstadisticas();
+      }, 1000);
+    } else {
+      const errorText = await response.text();
+      console.error('Response status:', response.status);
+      console.error('Response error:', errorText);
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error cargando datos de prueba:', error);
+    mostrarEstado('❌ Error al cargar datos de prueba: ' + error.message, 'error');
+  }
 }
 
 // Cargar datos al iniciar

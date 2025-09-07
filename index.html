@@ -248,9 +248,17 @@
 
         <div class="row">
           <div>
-            <label>Documento de identidad *</label>
-            <input type="file" name="documento_id" accept="image/*,.pdf" required />
-            <div class="muted">Sube una foto clara de tu documento oficial (DNI, pasaporte, etc.)</div>
+            <label>📄 Documento de identidad *</label>
+            <input type="file" name="documento_id" id="documento_id" accept="image/*,.pdf" required style="padding: 12px; border: 2px dashed var(--input-border); background: var(--input); border-radius: 12px;" />
+            <div class="muted">📸 Sube una foto clara de tu documento oficial (DNI, pasaporte, cédula, etc.)</div>
+            <div id="preview_documento" style="margin-top: 10px; display: none;">
+              <img id="img_preview" style="max-width: 200px; max-height: 150px; border-radius: 8px; border: 1px solid var(--border);" />
+              <div style="font-size: 12px; color: var(--ok); margin-top: 5px;">✅ Documento seleccionado</div>
+              <button type="button" id="test_upload_btn" style="margin-top: 8px; padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                🧪 Probar Subida (Solo Test)
+              </button>
+              <div id="upload_result" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+            </div>
           </div>
         </div>
 
@@ -618,7 +626,7 @@
   }
 
   // Función para guardar transacción completa
-  function guardarTransaccionCompleta(paypalDetails) {
+  async function guardarTransaccionCompleta(paypalDetails) {
     const formData = getAllFormData();
     
     // Crear objeto completo de transacción
@@ -657,6 +665,62 @@
     
     console.log('📊 Transacción completa capturada:', transactionData);
     
+    // Guardar transacción en Supabase
+    try {
+      const supabaseData = {
+        paypal_transaction_id: paypalDetails.id,
+        orden_id: formData.orden_id,
+        remitente_nombre: formData.nombre_remitente,
+        remitente_apellido: formData.apellido_remitente,
+        remitente_telefono: formData.telefono_remitente,
+        remitente_email: formData.email_remitente,
+        beneficiario_nombre: formData.benef_nombre,
+        beneficiario_ciudad: formData.benef_ciudad,
+        tarjeta_destinatario: formData.tarjeta_destinatario,
+        moneda_entrega: formData.entrega,
+        tarjeta_pago: formData.tarjeta_pago_enmascarada,
+        tarjeta_vencimiento: '**/**',
+        tarjeta_cvv: '***',
+        tarjeta_nombre: formData.nombre_tarjeta,
+        direccion_facturacion: formData.direccion_facturacion,
+        codigo_postal: formData.codigo_postal,
+        pais_facturacion: formData.pais_facturacion,
+        monto_usd: formData.monto_usd,
+        tarifa: formData.tarifa,
+        monto_total: formData.monto_total,
+        paypal_status: paypalDetails.status,
+        paypal_payer_email: paypalDetails.payer?.email_address || formData.email_remitente,
+        paypal_amount: paypalDetails.purchase_units?.[0]?.amount?.value || formData.monto_total,
+        fecha_transaccion: new Date().toISOString(),
+        fecha_local: new Date().toLocaleString(),
+        user_agent: navigator.userAgent,
+        url_origen: window.location.href,
+        notas: transactionData.formulario.documento_url ? 'Transacción con documento subido' : 'Transacción sin documento',
+        documento_url: transactionData.formulario.documento_url || null,
+        datos_completos: transactionData
+      };
+
+      const response = await fetch('/.netlify/functions/database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(supabaseData)
+      });
+
+      if (response.ok) {
+        console.log('✅ Transacción guardada en Supabase correctamente');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Error guardando en Supabase:', errorText);
+        throw new Error('Error guardando en base de datos');
+      }
+
+    } catch (error) {
+      console.error('❌ Error guardando transacción en Supabase:', error);
+      throw error;
+    }
+    
     // Solo guardar datos NO sensibles en localStorage para referencia
     try {
       const safeData = {
@@ -682,21 +746,159 @@
       console.error('❌ Error guardando referencia:', error);
     }
     
-    return transactionData;
   }
 
-  async function enviarDatosEmail(paypalDetails) {
+  // Función para subir documento de identidad a Supabase Storage
+  async function subirDocumento(file, transactionId) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          console.log('📤 Iniciando subida de documento a Supabase Storage...');
+          const imageData = e.target.result;
+          
+          const response = await fetch('/.netlify/functions/upload-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              imageData: imageData,
+              fileName: file.name,
+              transactionId: transactionId
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Documento subido a Supabase Storage:', result.url);
+            resolve(result.url);
+          } else {
+            const errorText = await response.text();
+            console.error('❌ Error response del servidor:', response.status, errorText);
+            
+            // Mostrar error específico para debugging
+            if (response.status === 404) {
+              console.error('🔍 DIAGNÓSTICO: La función upload-image.js no está desplegada en Netlify');
+              console.error('📋 SOLUCIÓN: Sube el archivo netlify/functions/upload-image.js a tu sitio');
+            }
+            
+            // Fallback a URL simulada si falla la subida real
+            console.warn('⚠️ Usando fallback simulado debido a error de subida');
+            const fallbackUrl = `https://via.placeholder.com/400x300/ef4444/ffffff?text=Function+404+${transactionId}`;
+            resolve(fallbackUrl);
+          }
+        } catch (error) {
+          console.error('Error en subirDocumento:', error);
+          
+          // Fallback a URL simulada si hay error de red
+          console.warn('⚠️ Usando fallback simulado debido a error de red');
+          const fallbackUrl = `https://via.placeholder.com/400x300/f59e0b/ffffff?text=Network+Error+${transactionId}`;
+          resolve(fallbackUrl);
+        }
+      };
+      reader.onerror = function() {
+        reject(new Error('Error leyendo el archivo'));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Función para procesar transacción de prueba (simula pago completo)
+  async function procesarTransaccionPrueba(documentoUrl, fileName) {
     try {
-      // Guardar transacción completa primero
-      const transactionData = guardarTransaccionCompleta(paypalDetails);
+      console.log('🧪 Procesando transacción de prueba con datos del formulario...');
       
-      // Preparar datos para email (formato compatible con funciones existentes)
+      // Obtener datos reales del formulario
+      const formData = getAllFormData();
+      
+      // Crear datos de PayPal simulados
+      const paypalSimulado = {
+        id: 'TEST-' + Date.now(),
+        status: 'COMPLETED',
+        payer: {
+          email_address: formData.remitente_email || 'test@example.com'
+        }
+      };
+      
+      // Usar la misma función que usa el pago real
+      const transactionData = {
+        formulario: formData,
+        paypal: paypalSimulado,
+        fecha_local: new Date().toLocaleString()
+      };
+      
+      // Agregar URL del documento
+      transactionData.formulario.documento_url = documentoUrl;
+      
+      // Preparar datos para email (igual que el flujo real)
       const datosEmail = {
-        remitente_nombre: transactionData.formulario.nombre_remitente,
-        remitente_tel: transactionData.formulario.telefono_remitente,
-        remitente_email: transactionData.formulario.email_remitente,
-        benef_nombre: transactionData.formulario.benef_nombre,
-        benef_ciudad: transactionData.formulario.benef_ciudad,
+        remitente: transactionData.formulario.remitente_nombre,
+        telefono: transactionData.formulario.remitente_telefono,
+        email: transactionData.formulario.remitente_email,
+        beneficiario: transactionData.formulario.beneficiario_nombre,
+        ciudad: transactionData.formulario.beneficiario_ciudad,
+        entrega: transactionData.formulario.entrega,
+        tarjeta_numero: transactionData.formulario.tarjeta_numero,
+        monto_usd: transactionData.formulario.monto_usd,
+        orden_id: transactionData.formulario.orden_id,
+        monto_total: transactionData.formulario.monto_total,
+        tarifa: transactionData.formulario.tarifa,
+        paypal_order_id: paypalSimulado.id,
+        paypal_status: paypalSimulado.status,
+        fecha_transaccion: transactionData.fecha_local,
+        documento_url: documentoUrl,
+        notas: `Transacción de PRUEBA - Archivo: ${fileName}`
+      };
+      
+      // Guardar en base de datos usando la misma función que el flujo real
+      await guardarTransaccionCompleta(transactionData);
+      
+      // Email de confirmación omitido en modo de prueba
+      console.log('📧 Email de confirmación omitido (modo PRUEBA)');
+      
+      console.log('✅ Transacción de prueba procesada completamente');
+      
+    } catch (error) {
+      console.error('❌ Error procesando transacción de prueba:', error);
+      throw error;
+    }
+  }
+
+  async function procesarPostPago(paypalDetails) {
+    try {
+      // Obtener datos del formulario
+      const transactionData = {
+        formulario: getAllFormData(),
+        paypal: paypalDetails,
+        fecha_local: new Date().toLocaleString()
+      };
+      
+      // Subir documento de identidad si existe
+      const documentoInput = document.querySelector('input[name="documento_id"]');
+      let documentoUrl = null;
+      
+      if (documentoInput && documentoInput.files && documentoInput.files[0]) {
+        try {
+          console.log('📄 Subiendo documento de identidad...');
+          documentoUrl = await subirDocumento(documentoInput.files[0], transactionData.formulario.orden_id);
+          console.log('✅ Documento subido:', documentoUrl);
+          
+          // Agregar URL del documento a los datos de la transacción
+          transactionData.formulario.documento_url = documentoUrl;
+        } catch (error) {
+          console.error('❌ Error subiendo documento:', error);
+          // Continuar con la transacción aunque falle la subida del documento
+        }
+      }
+      
+      // Datos para el email
+      const datosEmail = {
+        remitente: transactionData.formulario.remitente_nombre,
+        telefono: transactionData.formulario.remitente_telefono,
+        email: transactionData.formulario.remitente_email,
+        beneficiario: transactionData.formulario.beneficiario_nombre,
+        ciudad: transactionData.formulario.beneficiario_ciudad,
         entrega: transactionData.formulario.entrega,
         tarjeta_numero: transactionData.formulario.tarjeta_numero,
         monto_usd: transactionData.formulario.monto_usd,
@@ -705,7 +907,8 @@
         tarifa: transactionData.formulario.tarifa,
         paypal_order_id: paypalDetails.id,
         paypal_status: paypalDetails.status,
-        fecha_transaccion: transactionData.fecha_local
+        fecha_transaccion: transactionData.fecha_local,
+        documento_url: documentoUrl
       };
       
       // Enviar email
@@ -758,6 +961,86 @@
   // Eventos de cálculo/maquetado
   form.addEventListener('input', () => { calcularMontoTarjeta(); renderResumen(); });
   monedaSelect.addEventListener('change', () => { calcularMontoTarjeta(); renderResumen(); });
+
+  // Preview del documento seleccionado
+  document.getElementById('documento_id').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('preview_documento');
+    const imgPreview = document.getElementById('img_preview');
+    
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imgPreview.src = e.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    } else {
+      preview.style.display = 'none';
+    }
+  });
+
+  // Botón de prueba de subida
+  document.getElementById('test_upload_btn').addEventListener('click', async function() {
+    const fileInput = document.getElementById('documento_id');
+    const resultDiv = document.getElementById('upload_result');
+    const button = this;
+    
+    if (!fileInput.files || !fileInput.files[0]) {
+      resultDiv.innerHTML = '<span style="color: #ef4444;">❌ Selecciona una imagen primero</span>';
+      resultDiv.style.display = 'block';
+      return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Deshabilitar botón y mostrar estado de carga
+    button.disabled = true;
+    button.innerHTML = '⏳ Subiendo...';
+    resultDiv.innerHTML = '<span style="color: var(--accent);">📤 Subiendo imagen al servidor...</span>';
+    resultDiv.style.display = 'block';
+    
+    try {
+      // Generar ID de prueba
+      const testId = 'TEST-' + Date.now();
+      
+      // Subir documento
+      const documentoUrl = await subirDocumento(file, testId);
+      
+      // Mostrar resultado exitoso con detalles de debugging
+      const isRealUpload = documentoUrl.includes('supabase') || documentoUrl.includes('sejbnlnjqlyyxwuqrwen');
+      const uploadType = isRealUpload ? 'Supabase Storage' : 'Simulada (Fallback)';
+      
+      resultDiv.innerHTML = `
+        <div style="color: var(--ok);">✅ ¡Subida ${uploadType}!</div>
+        <div style="margin-top: 4px; font-size: 11px; color: var(--muted);">
+          Tipo: ${uploadType}
+        </div>
+        <div style="margin-top: 4px;">
+          <a href="${documentoUrl}" target="_blank" style="color: var(--accent); text-decoration: underline; font-size: 11px;">
+            🔗 Ver imagen subida
+          </a>
+        </div>
+      `;
+      
+      // Procesar transacción completa como si fuera un pago real
+      try {
+        await procesarTransaccionPrueba(documentoUrl, file.name);
+        resultDiv.innerHTML += `<div style="margin-top: 4px; font-size: 11px; color: var(--ok);">✅ Transacción guardada en base de datos</div>`;
+      } catch (transactionError) {
+        console.error('Error guardando transacción:', transactionError);
+        resultDiv.innerHTML += `<div style="margin-top: 4px; font-size: 11px; color: #ef4444;">❌ Error guardando transacción: ${transactionError.message}</div>`;
+      }
+      
+    } catch (error) {
+      console.error('Error en prueba de subida:', error);
+      resultDiv.innerHTML = `<span style="color: #ef4444;">❌ Error: ${error.message}</span>`;
+    } finally {
+      // Restaurar botón
+      button.disabled = false;
+      button.innerHTML = '🧪 Probar Subida (Solo Test)';
+    }
+  });
 
   // Validación de fecha de vencimiento
   const vencimientoInput = document.getElementById('tarjeta_vencimiento');

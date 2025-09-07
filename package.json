@@ -4,12 +4,14 @@
   "description": "Sistema de transferencia de dinero a Cuba",
   "main": "index.html",
   "scripts": {
+    "build": "echo 'Building functions...'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["cuba", "money-transfer", "paypal"],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0"
+    "@supabase/supabase-js": "^2.38.0",
+    "@paypal/checkout-server-sdk": "^1.0.3"
   }
 }

@@ -44,6 +44,9 @@ CREATE TABLE transactions (
   url_origen VARCHAR(500),
   notas TEXT,
   
+  -- URL del documento de identidad
+  documento_url VARCHAR(500),
+  
   -- Datos completos (JSON para respaldo)
   datos_completos JSONB,
   
