@@ -58,11 +58,13 @@
       <button class="btn" onclick="cargarTransacciones()">🔄 Cargar Datos</button>
       <button class="btn" onclick="verDocumentos()">📄 Ver Documentos</button>
       <button class="btn" onclick="cargarDatosPrueba()">📋 Cargar Datos de Prueba</button>
+      <button class="btn" onclick="limpiarBaseDatos()" style="background: #dc2626;">🗑️ Limpiar Todo</button>
       <button class="btn" onclick="descargarPDF()">📄 Exportar PDF</button>
       <button class="btn" onclick="descargarPlanilla()">📊 Descargar Planilla</button>
-      <button class="btn" onclick="limpiarDatos()">🗑️ Limpiar Datos</button>
-      <button class="btn" onclick="cerrarSesion()" style="background: #dc2626;">🚪 Cerrar Sesión</button>
     </div>
+    
+    <button class="btn" onclick="limpiarDatos()">🗑️ Limpiar Datos</button>
+    <button class="btn" onclick="cerrarSesion()" style="background: #dc2626;">🚪 Cerrar Sesión</button>
     
     <button class="btn" onclick="verEstadisticas()">
       📈 Actualizar Estadísticas
@@ -675,6 +677,48 @@ function mostrarDocumentosEjemplo() {
       </p>
     </div>
   `;
+}
+
+async function limpiarBaseDatos() {
+  if (!confirm('⚠️ ¿Estás seguro de que quieres eliminar TODAS las transacciones? Esta acción no se puede deshacer.')) {
+    return;
+  }
+  
+  try {
+    mostrarEstado('🗑️ Eliminando todas las transacciones...', 'success');
+    
+    const response = await fetch('/.netlify/functions/database', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      },
+      body: JSON.stringify({
+        action: 'clear_all_transactions'
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      mostrarEstado('✅ Base de datos limpiada correctamente', 'success');
+      
+      // Actualizar estadísticas
+      document.getElementById('totalTransactions').textContent = '0';
+      document.getElementById('totalAmount').textContent = '$0';
+      document.getElementById('totalFees').textContent = '$0';
+      
+      // Limpiar lista de documentos si está visible
+      const documentsSection = document.getElementById('documentsSection');
+      if (documentsSection && documentsSection.style.display !== 'none') {
+        mostrarSinDocumentos();
+      }
+    } else {
+      throw new Error('Error al limpiar la base de datos');
+    }
+  } catch (error) {
+    console.error('Error limpiando base de datos:', error);
+    mostrarEstado('❌ Error al limpiar la base de datos', 'error');
+  }
 }
 
 async function cargarDatosPrueba() {
