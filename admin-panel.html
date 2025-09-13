@@ -94,9 +94,31 @@
   .transaction-item {
     background: rgba(30, 41, 59, 0.5);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 16px;
     margin-bottom: 16px;
+  }
+  
+  .loading, .no-data, .error {
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  
+  .loading {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+  
+  .no-data {
+    background: rgba(156, 163, 175, 0.1);
+    color: #9ca3af;
+  }
+  
+  .error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
   }
   
   .transaction-header {
@@ -257,33 +279,63 @@ if (!verificarAutenticacion()) {
 // Cargar datos automáticamente
 async function cargarDatos() {
   try {
-    const response = await fetch('/.netlify/functions/database', {
+    // Mostrar indicador de carga
+    const transactionsList = document.getElementById('transactionsList');
+    if (transactionsList) {
+      transactionsList.innerHTML = '<div class="loading">Cargando datos actualizados...</div>';
+    }
+
+    // Forzar recarga sin caché
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/.netlify/functions/database?t=${timestamp}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`
-      }
+        'Authorization': `Bearer ${adminToken}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
+      cache: 'no-store'
     });
     
     if (response.ok) {
       const data = await response.json();
       
       // Actualizar estadísticas
-      document.getElementById('totalTransactions').textContent = data.total || 0;
-      document.getElementById('totalAmount').textContent = `$${(data.totalAmount || 0).toFixed(2)}`;
-      document.getElementById('totalFees').textContent = `$${(data.totalFees || 0).toFixed(2)}`;
+      const total = data.transactions ? data.transactions.length : 0;
+      const totalAmount = data.transactions ? 
+        data.transactions.reduce((sum, t) => sum + (parseFloat(t.monto_total) || 0), 0) : 0;
+      const totalFees = data.transactions ? 
+        data.transactions.reduce((sum, t) => sum + (parseFloat(t.tarifa) || 0), 0) : 0;
+      
+      document.getElementById('totalTransactions').textContent = total;
+      document.getElementById('totalAmount').textContent = `$${totalAmount.toFixed(2)}`;
+      document.getElementById('totalFees').textContent = `$${totalFees.toFixed(2)}`;
       
       // Calcular promedio
-      const avgAmount = data.total > 0 ? (data.totalAmount || 0) / data.total : 0;
+      const avgAmount = total > 0 ? totalAmount / total : 0;
       document.getElementById('avgTransaction').textContent = `$${avgAmount.toFixed(2)}`;
       
       // Mostrar transacciones
       if (data.transactions && data.transactions.length > 0) {
         mostrarTransacciones(data.transactions);
+      } else {
+        transactionsList.innerHTML = '<div class="no-data">No hay transacciones recientes</div>';
+      }
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Error en la respuesta:', response.status, errorData);
+      if (transactionsList) {
+        transactionsList.innerHTML = `<div class="error">Error al cargar datos: ${errorData.error || 'Error desconocido'}</div>`;
       }
     }
   } catch (error) {
     console.error('Error cargando datos:', error);
+    const transactionsList = document.getElementById('transactionsList');
+    if (transactionsList) {
+      transactionsList.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+    }
   }
 }
 
