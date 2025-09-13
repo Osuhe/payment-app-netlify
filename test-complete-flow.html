@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Subida de Documentos</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .success { color: #16a34a; }
+        .error { color: #dc2626; }
+        .warning { color: #f59e0b; }
+        button { padding: 10px 20px; margin: 10px 5px; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Prueba Completa del Sistema de Subida</h1>
+    
+    <div class="test-section">
+        <h2>1. Diagnóstico del Sistema</h2>
+        <button onclick="runDiagnostics()">🔍 Ejecutar Diagnóstico</button>
+        <div id="diagnostics-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Prueba de Subida de Documento</h2>
+        <input type="file" id="test-file" accept="image/*,.pdf">
+        <br>
+        <button onclick="testUpload()">📤 Probar Subida</button>
+        <div id="upload-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Verificar Documentos en Storage</h2>
+        <button onclick="listDocuments()">📋 Listar Documentos</button>
+        <div id="list-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function runDiagnostics() {
+            const resultDiv = document.getElementById('diagnostics-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '🔄 Ejecutando diagnóstico...';
+
+            try {
+                const response = await fetch('/.netlify/functions/test-upload-diagnostics');
+                const result = await response.json();
+                
+                let html = '<h3>Resultado del Diagnóstico:</h3>';
+                html += `<div class="${result.summary?.status?.includes('OK') ? 'success' : 'error'}">`;
+                html += `<strong>Estado:</strong> ${result.summary?.status || 'Desconocido'}</div>`;
+                
+                if (result.environment) {
+                    html += '<h4>Variables de Entorno:</h4><ul>';
+                    for (const [key, value] of Object.entries(result.environment)) {
+                        html += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                    html += '</ul>';
+                }
+                
+                if (result.supabase) {
+                    html += '<h4>Conexión Supabase:</h4><ul>';
+                    for (const [key, value] of Object.entries(result.supabase)) {
+                        html += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                    html += '</ul>';
+                }
+                
+                if (result.storage) {
+                    html += '<h4>Storage:</h4><ul>';
+                    for (const [key, value] of Object.entries(result.storage)) {
+                        html += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                    html += '</ul>';
+                }
+                
+                if (result.errors && result.errors.length > 0) {
+                    html += '<h4 class="error">Errores:</h4><ul>';
+                    result.errors.forEach(error => {
+                        html += `<li class="error">${error}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error ejecutando diagnóstico: ${error.message}</div>`;
+            }
+        }
+
+        async function testUpload() {
+            const fileInput = document.getElementById('test-file');
+            const resultDiv = document.getElementById('upload-result');
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                alert('Por favor selecciona un archivo primero');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '📤 Subiendo archivo...';
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const imageData = e.target.result;
+                        const transactionId = 'TEST-' + Date.now();
+                        
+                        const response = await fetch('/.netlify/functions/upload-image-improved', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                imageData: imageData,
+                                fileName: file.name,
+                                transactionId: transactionId
+                            })
+                        });
+
+                        const result = await response.json();
+                        
+                        if (response.ok && result.success) {
+                            resultDiv.innerHTML = `
+                                <div class="success">✅ ¡Archivo subido exitosamente!</div>
+                                <ul>
+                                    <li><strong>Archivo:</strong> ${result.fileName}</li>
+                                    <li><strong>URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></li>
+                                    <li><strong>Bucket:</strong> ${result.bucket}</li>
+                                    <li><strong>Ruta:</strong> ${result.path}</li>
+                                </ul>
+                            `;
+                        } else {
+                            resultDiv.innerHTML = `
+                                <div class="error">❌ Error subiendo archivo:</div>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            `;
+                        }
+                        
+                    } catch (uploadError) {
+                        resultDiv.innerHTML = `<div class="error">❌ Error en la subida: ${uploadError.message}</div>`;
+                    }
+                };
+                
+                reader.onerror = function() {
+                    resultDiv.innerHTML = '<div class="error">❌ Error leyendo el archivo</div>';
+                };
+                
+                reader.readAsDataURL(file);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function listDocuments() {
+            const resultDiv = document.getElementById('list-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '📋 Listando documentos...';
+
+            try {
+                // Esta función necesitaría ser implementada en el backend
+                resultDiv.innerHTML = `
+                    <div class="warning">⚠️ Función de listado no implementada aún</div>
+                    <p>Para ver los documentos, ve al panel de Supabase Storage.</p>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Ejecutar diagnóstico automáticamente al cargar la página
+        window.onload = function() {
+            runDiagnostics();
+        };
+    </script>
+</body>
+</html>
