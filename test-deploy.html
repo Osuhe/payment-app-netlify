@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prueba de Despliegue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Despliegue en Netlify</h1>
+    <p>Si puedes ver esta página, el despliegue básico está funcionando correctamente.</p>
+    <p class="success">¡Éxito! El servidor está respondiendo correctamente.</p>
+    
+    <h2>Prueba de rutas:</h2>
+    <ul>
+        <li><a href="/login.html">Ir al Login</a></li>
+        <li><a href="/admin/">Ir al Panel de Administración</a></li>
+        <li><a href="/test.html">Otra página de prueba</a></li>
+    </ul>
+    
+    <div style="margin-top: 50px; padding: 20px; background: #f5f5f5; border-radius: 5px;">
+        <h3>Información de depuración:</h3>
+        <p><strong>URL actual:</strong> <span id="current-url"></span></p>
+        <p><strong>Hora del servidor:</strong> <span id="server-time"></span></p>
+    </div>
+    
+    <script>
+        // Mostrar la URL actual
+        document.getElementById('current-url').textContent = window.location.href;
+        
+        // Mostrar la hora actual
+        const now = new Date();
+        document.getElementById('server-time').textContent = now.toLocaleString();
+    </script>
+</body>
+</html>
