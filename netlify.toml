@@ -11,16 +11,23 @@
   node_bundler = "esbuild"
   external_node_modules = ["@supabase/supabase-js"]
 
+# Redirección general para SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Redirecciones para el panel de administración
+# Redirección específica para el panel de administración
+[[redirects]]
+  from = "/admin"
+  to = "/admin/"
+  status = 200
+
 [[redirects]]
   from = "/admin/*"
   to = "/admin/index.html"
   status = 200
+  force = true
 
 # Redirección para el login
 [[redirects]]
