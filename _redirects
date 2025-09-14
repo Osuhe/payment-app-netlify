@@ -1,0 +1,5 @@
+# Redirección general para SPA
+/* /index.html 200
+
+# Rutas del panel de administración
+/admin/*  /admin/index.html  200

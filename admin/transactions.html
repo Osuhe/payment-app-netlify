@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transacciones - Panel de Administración</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <style>
+    .sidebar {
+      transition: all 0.3s;
+      width: 250px;
+    }
+    .main-content {
+      margin-left: 250px;
+      transition: all 0.3s;
+    }
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 50;
+        height: 100vh;
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .main-content {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- Sidebar -->
+  <div class="sidebar fixed h-full bg-white shadow-lg">
+    <div class="p-4 border-b">
+      <h1 class="text-xl font-bold text-gray-800">Envíos a Cuba</h1>
+      <p class="text-sm text-gray-500">Panel de Control</p>
+    </div>
+    <nav class="p-4">
+      <ul>
+        <li class="mb-2">
+          <a href="index.html" class="flex items-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <i class="fas fa-tachometer-alt w-5 mr-3"></i>
+            Dashboard
+          </a>
+        </li>
+        <li class="mb-2">
+          <a href="transactions.html" class="flex items-center p-3 text-blue-600 bg-blue-50 rounded-lg">
+            <i class="fas fa-exchange-alt w-5 mr-3"></i>
+            Transacciones
+          </a>
+        </li>
+        <li class="mb-2">
+          <a href="users.html" class="flex items-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <i class="fas fa-users w-5 mr-3"></i>
+            Usuarios
+          </a>
+        </li>
+        <li class="mb-2">
+          <a href="#" class="flex items-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+            <i class="fas fa-cog w-5 mr-3"></i>
+            Configuración
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <div class="absolute bottom-0 w-full p-4 border-t">
+      <button onclick="logout()" class="flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg">
+        <i class="fas fa-sign-out-alt w-5 mr-3"></i>
+        Cerrar Sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content min-h-screen">
+    <!-- Top Bar -->
+    <header class="bg-white shadow-sm">
+      <div class="flex items-center justify-between px-6 py-4">
+        <div class="flex items-center">
+          <button id="menu-toggle" class="lg:hidden text-gray-600 hover:text-gray-900 mr-4">
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+          <h2 class="text-xl font-semibold text-gray-800">Transacciones</h2>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+            <i class="fas fa-plus mr-2"></i>
+            Nueva Transacción
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="p-6">
+      <!-- Filtros -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+            <input type="text" placeholder="ID, cliente..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>Todos</option>
+              <option>Pendiente</option>
+              <option>En Proceso</option>
+              <option>Completado</option>
+              <option>Cancelado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Desde</label>
+            <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="flex items-end">
+            <button class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+              Filtrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Transacciones -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="transactions-container">
+              <!-- Las transacciones se cargarán aquí -->
+            </tbody>
+          </table>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div class="text-sm text-gray-500">
+            Mostrando <span class="font-medium">1</span> a <span class="font-medium">10</span> de <span class="font-medium">24</span> resultados
+          </div>
+          <div class="flex space-x-2">
+            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Anterior</button>
+            <button class="px-3 py-1 border border-blue-500 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">1</button>
+            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">2</button>
+            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">3</button>
+            <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Siguiente</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Verificar autenticación
+    if (!localStorage.getItem('isAuthenticated')) {
+      window.location.href = '../login.html';
+    }
+
+    // Datos de ejemplo
+    const transactions = [
+      { id: 'TRX-001', customer: 'Juan Pérez', date: '2023-06-15', amount: 150.00, status: 'Completado', statusClass: 'bg-green-100 text-green-800' },
+      { id: 'TRX-002', customer: 'María García', date: '2023-06-14', amount: 275.50, status: 'En Proceso', statusClass: 'bg-yellow-100 text-yellow-800' },
+      { id: 'TRX-003', customer: 'Carlos López', date: '2023-06-14', amount: 89.99, status: 'Pendiente', statusClass: 'bg-blue-100 text-blue-800' },
+      { id: 'TRX-004', customer: 'Ana Martínez', date: '2023-06-13', amount: 210.00, status: 'Completado', statusClass: 'bg-green-100 text-green-800' },
+      { id: 'TRX-005', customer: 'Pedro Rodríguez', date: '2023-06-12', amount: 150.00, status: 'Cancelado', statusClass: 'bg-red-100 text-red-800' }
+    ];
+
+    // Cargar transacciones en la tabla
+    function loadTransactions() {
+      const container = document.getElementById('transactions-container');
+      container.innerHTML = '';
+
+      transactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${transaction.id}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${transaction.customer}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(transaction.date).toLocaleDateString()}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${transaction.amount.toFixed(2)}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.statusClass}">
+              ${transaction.status}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <a href="#" class="text-blue-600 hover:text-blue-900 mr-4">Ver</a>
+            <a href="#" class="text-indigo-600 hover:text-indigo-900">Editar</a>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Toggle mobile menu
+    document.getElementById('menu-toggle').addEventListener('click', function() {
+      document.querySelector('.sidebar').classList.toggle('active');
+    });
+
+    // Cerrar menú al hacer clic fuera de él
+    document.addEventListener('click', function(event) {
+      const sidebar = document.querySelector('.sidebar');
+      const menuButton = document.getElementById('menu-toggle');
+      
+      if (!sidebar.contains(event.target) && event.target !== menuButton) {
+        sidebar.classList.remove('active');
+      }
+    });
+
+    // Función para cerrar sesión
+    window.logout = function() {
+      localStorage.removeItem('isAuthenticated');
+      window.location.href = '../login.html';
+    };
+
+    // Cargar transacciones al iniciar
+    document.addEventListener('DOMContentLoaded', loadTransactions);
+  </script>
+</body>
+</html>

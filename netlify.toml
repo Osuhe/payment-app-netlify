@@ -1,10 +1,37 @@
 [build]
-  command = "npm install"
+  command = "npm install && npm run build"
   publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18.x"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js"]
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Redirecciones para el panel de administración
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+# Redirección para el login
+[[redirects]]
+  from = "/login"
+  to = "/login.html"
+  status = 200
 
 [dev]
   targetPort = 8888
+  framework = "#custom"
+  command = "npm run dev"
+  port = 8888
+  publish = "."
+  autoLaunch = true
