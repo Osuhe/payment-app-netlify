@@ -1,25 +1,29 @@
 [build]
+  # No necesitamos comando de build ya que son archivos estáticos
   command = ""
+  # Directorio que contiene los archivos estáticos
   publish = "."
+  # Directorio de funciones serverless
   functions = "netlify/functions"
 
-# Redirecciones
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/admin"
-  to = "/admin/"
-  status = 200
-
+# Configuración de redirecciones
 [[redirects]]
   from = "/admin/*"
   to = "/admin/index.html"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/login"
   to = "/login.html"
   status = 200
+
+# Configuración de encabezados para archivos estáticos
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cache-Control = "public, max-age=0, must-revalidate"
