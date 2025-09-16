@@ -94,10 +94,11 @@ exports.handler = async (event, context) => {
 
     // 2. Eliminar todas las transacciones de la base de datos
     try {
+      // Eliminar todas las transacciones usando match vacío
       const { data, error } = await supabase
         .from('transactions')
         .delete()
-        .neq('id', 0); // Eliminar todos los registros
+        .match({}); // Elimina todos los registros
 
       if (error) {
         throw new Error(`Error eliminando transacciones: ${error.message}`);
