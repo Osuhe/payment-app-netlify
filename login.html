@@ -63,24 +63,103 @@
   </div>
 
   <script>
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    // Función para hashear la contraseña (solo para ejemplo, en producción usar un backend seguro)
+    async function hashPassword(password) {
+      const msgBuffer = new TextEncoder().encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
+      const rememberMe = document.getElementById('remember-me').checked;
       
-      // Credenciales de prueba
-      if (username === 'admin' && password === 'admin123') {
-        localStorage.setItem('isAuthenticated', 'true');
-        window.location.href = 'admin/';
-      } else {
-        alert('Usuario o contraseña incorrectos');
+      try {
+        // Hashear la contraseña antes de comparar
+        const hashedPassword = await hashPassword(password);
+        
+        // Credenciales (en producción, esto debería hacerse en el backend)
+        const validUsers = [
+          { 
+            username: 'admin', 
+            // Contraseña: AdminSecure123! (hasheada con SHA-256)
+            passwordHash: 'a1b2c3d4e5f6...' // Reemplazar con el hash real
+          }
+        ];
+        
+        const user = validUsers.find(u => u.username === username);
+        
+        if (user && user.passwordHash === hashedPassword) {
+          // Crear un token de sesión
+          const sessionToken = btoa(JSON.stringify({
+            username: user.username,
+            expires: rememberMe ? Date.now() + (30 * 24 * 60 * 60 * 1000) : null, // 30 días si "Recordarme" está activado
+            lastLogin: new Date().toISOString()
+          }));
+          
+          // Guardar el token en sessionStorage o localStorage según corresponda
+          if (rememberMe) {
+            localStorage.setItem('sessionToken', sessionToken);
+          } else {
+            sessionStorage.setItem('sessionToken', sessionToken);
+          }
+          
+          // Redirigir al panel de administración
+          window.location.href = 'admin/';
+        } else {
+          showError('Usuario o contraseña incorrectos');
+        }
+      } catch (error) {
+        console.error('Error durante la autenticación:', error);
+        showError('Error al iniciar sesión. Intente nuevamente.');
       }
     });
-
-    // Redirigir si ya está autenticado
-    if (localStorage.getItem('isAuthenticated')) {
-      window.location.href = 'admin/';
+    
+    function showError(message) {
+      // Eliminar mensajes de error anteriores
+      const existingError = document.querySelector('.error-message');
+      if (existingError) {
+        existingError.remove();
+      }
+      
+      // Crear y mostrar el nuevo mensaje de error
+      const errorElement = document.createElement('div');
+      errorElement.className = 'error-message mt-2 text-sm text-red-600';
+      errorElement.textContent = message;
+      
+      const submitButton = document.querySelector('button[type="submit"]');
+      submitButton.parentNode.insertBefore(errorElement, submitButton.nextSibling);
     }
+    
+    // Verificar sesión existente al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+      const sessionToken = localStorage.getItem('sessionToken') || sessionStorage.getItem('sessionToken');
+      
+      if (sessionToken) {
+        try {
+          const sessionData = JSON.parse(atob(sessionToken));
+          
+          // Verificar si la sesión ha expirado
+          if (sessionData.expires && sessionData.expires < Date.now()) {
+            // Eliminar token expirado
+            localStorage.removeItem('sessionToken');
+            sessionStorage.removeItem('sessionToken');
+            return;
+          }
+          
+          // Redirigir al panel de administración
+          window.location.href = 'admin/';
+        } catch (error) {
+          console.error('Error al verificar la sesión:', error);
+          // Limpiar tokens inválidos
+          localStorage.removeItem('sessionToken');
+          sessionStorage.removeItem('sessionToken');
+        }
+      }
+    });
   </script>
 </body>
 </html>

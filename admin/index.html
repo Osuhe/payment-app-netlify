@@ -3,35 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración</title>
+  <title>Panel de Administración - Envíos a Cuba</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-  <style>
-    .sidebar {
-      transition: all 0.3s;
-      width: 250px;
-    }
-    .main-content {
-      margin-left: 250px;
-      transition: all 0.3s;
-    }
-    @media (max-width: 1024px) {
-      .sidebar {
-        transform: translateX(-100%);
-        position: fixed;
-        z-index: 50;
-        height: 100vh;
-      }
-      .sidebar.active {
-        transform: translateX(0);
-      }
-      .main-content {
-        margin-left: 0;
-      }
-    }
-  </style>
+  <link href="/admin/css/styles.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl">
+      <div class="flex items-center">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mr-4"></div>
+        <span class="text-gray-700">Cargando...</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <div class="sidebar fixed h-full bg-white shadow-lg">
     <div class="p-4 border-b">
@@ -59,7 +46,7 @@
           </a>
         </li>
         <li class="mb-2">
-          <a href="#" class="flex items-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg">
+          <a href="settings.html" class="flex items-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg">
             <i class="fas fa-cog w-5 mr-3"></i>
             Configuración
           </a>
@@ -67,7 +54,7 @@
       </ul>
     </nav>
     <div class="absolute bottom-0 w-full p-4 border-t">
-      <button onclick="logout()" class="flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg">
+      <button id="logout-btn" class="flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg">
         <i class="fas fa-sign-out-alt w-5 mr-3"></i>
         Cerrar Sesión
       </button>
@@ -91,14 +78,14 @@
             <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
           </div>
           <div class="relative">
-            <button class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100">
+            <button class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 relative">
               <i class="fas fa-bell text-xl"></i>
               <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
           </div>
           <div class="flex items-center">
             <img src="https://ui-avatars.com/api/?name=Admin&background=3B82F6&color=fff" alt="Admin" class="w-8 h-8 rounded-full">
-            <span class="ml-2 text-sm font-medium text-gray-700">Administrador</span>
+            <span class="ml-2 text-sm font-medium text-gray-700 user-name">Administrador</span>
           </div>
         </div>
       </div>
@@ -107,52 +94,49 @@
     <!-- Main Content Area -->
     <main class="p-6">
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-500">Total de Envíos</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">1,248</h3>
-              <p class="text-xs text-green-500 mt-1">+12% desde el mes pasado</p>
+              <h3 class="text-2xl font-bold text-gray-800 mt-1" id="total-shipments">-</h3>
+              <p class="text-xs text-green-500 mt-1" id="shipments-change">Cargando...</p>
             </div>
             <div class="p-3 bg-blue-50 rounded-lg">
-              <i class="fas fa-box text-blue-600 text-xl"></i>
+              <i class="fas fa-shipping-fast text-blue-600 text-xl"></i>
             </div>
           </div>
         </div>
-
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-500">En Proceso</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">324</h3>
-              <p class="text-xs text-yellow-500 mt-1">+5% desde ayer</p>
+              <h3 class="text-2xl font-bold text-gray-800 mt-1" id="in-progress">-</h3>
+              <p class="text-xs text-yellow-500 mt-1" id="in-progress-change">Cargando...</p>
             </div>
             <div class="p-3 bg-yellow-50 rounded-lg">
               <i class="fas fa-clock text-yellow-600 text-xl"></i>
             </div>
           </div>
         </div>
-
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-500">Completados</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">876</h3>
-              <p class="text-xs text-green-500 mt-1">+8% desde ayer</p>
+              <h3 class="text-2xl font-bold text-gray-800 mt-1" id="completed">-</h3>
+              <p class="text-xs text-green-500 mt-1" id="completed-change">Cargando...</p>
             </div>
             <div class="p-3 bg-green-50 rounded-lg">
               <i class="fas fa-check-circle text-green-600 text-xl"></i>
             </div>
           </div>
         </div>
-
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-500">Ingresos Totales</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">$24,890</h3>
-              <p class="text-xs text-blue-500 mt-1">+15% desde el mes pasado</p>
+              <p class="text-sm font-medium text-gray-500">Ingresos</p>
+              <h3 class="text-2xl font-bold text-gray-800 mt-1" id="revenue">-</h3>
+              <p class="text-xs text-green-500 mt-1" id="revenue-change">Cargando...</p>
             </div>
             <div class="p-3 bg-purple-50 rounded-lg">
               <i class="fas fa-dollar-sign text-purple-600 text-xl"></i>
@@ -162,55 +146,34 @@
       </div>
 
       <!-- Recent Activity -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-        <div class="p-6 border-b border-gray-200">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div class="flex justify-between items-center mb-6">
           <h3 class="text-lg font-semibold text-gray-800">Actividad Reciente</h3>
+          <a href="transactions.html" class="text-sm text-blue-600 hover:underline">Ver todo</a>
         </div>
-        <div class="p-6">
-          <div class="space-y-4">
-            <div class="flex items-start">
-              <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <i class="fas fa-shipping-fast text-blue-600"></i>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-900">Nuevo envío creado</p>
-                <p class="text-sm text-gray-500">Orden #1234 por Juan Pérez</p>
-                <p class="text-xs text-gray-400">Hace 5 minutos</p>
-              </div>
-            </div>
-            <!-- More activity items... -->
+        <div class="space-y-4" id="recent-activity">
+          <!-- Activity items will be loaded dynamically -->
+          <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+            <p>Cargando actividad reciente...</p>
           </div>
         </div>
       </div>
     </main>
   </div>
 
-  <script>
+  <!-- Scripts -->
+  <script type="module">
+    // Importar módulos
+    import { isAuthenticated, logout } from '/admin/js/auth.js';
+    
     // Verificar autenticación
-    if (!localStorage.getItem('isAuthenticated')) {
+    if (!isAuthenticated()) {
       window.location.href = '../login.html';
     }
-
-    // Toggle mobile menu
-    document.getElementById('menu-toggle').addEventListener('click', function() {
-      document.querySelector('.sidebar').classList.toggle('active');
-    });
-
-    // Cerrar menú al hacer clic fuera de él
-    document.addEventListener('click', function(event) {
-      const sidebar = document.querySelector('.sidebar');
-      const menuButton = document.getElementById('menu-toggle');
-      
-      if (!sidebar.contains(event.target) && event.target !== menuButton) {
-        sidebar.classList.remove('active');
-      }
-    });
-
-    // Función para cerrar sesión
-    window.logout = function() {
-      localStorage.removeItem('isAuthenticated');
-      window.location.href = '../login.html';
-    };
+    
+    // Cargar el script principal
+    import '/admin/js/main.js';
   </script>
 </body>
 </html>
