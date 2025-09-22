@@ -6,10 +6,6 @@
   Permissions-Policy: geolocation=(), microphone=(), camera=()
   Cache-Control: no-cache
 
-/admin/*
-  X-Frame-Options: DENY
-  X-XSS-Protection: 1; mode=block
-  X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer-when-downgrade
   Cache-Control: no-cache
   X-Robots-Tag: noindex, nofollow

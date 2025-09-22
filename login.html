@@ -107,8 +107,8 @@
             sessionStorage.setItem('sessionToken', sessionToken);
           }
           
-          // Redirigir al panel de administración
-          window.location.href = 'admin/';
+          // Redirigir a la página principal
+          window.location.href = '/';
         } else {
           showError('Usuario o contraseña incorrectos');
         }
@@ -150,8 +150,8 @@
             return;
           }
           
-          // Redirigir al panel de administración
-          window.location.href = 'admin/';
+          // Redirigir a la página principal
+          window.location.href = '/';
         } catch (error) {
           console.error('Error al verificar la sesión:', error);
           // Limpiar tokens inválidos
