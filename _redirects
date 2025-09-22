@@ -3,3 +3,7 @@
 
 # Redirección para el login
 /login    /login.html    200
+
+# Redirecciones para rutas de administración obsoletas
+/admin-panel.html    /    301
+/admin/*             /    301
