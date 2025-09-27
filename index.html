@@ -661,10 +661,71 @@
 
   // Función para guardar transacción completa
   async function guardarTransaccionCompleta(paypalDetails) {
-    // Si paypalDetails es un objeto completo de transacción (modo prueba), usarlo directamente
-    if (paypalDetails.formulario && paypalDetails.paypal) {
-      const transactionData = paypalDetails;
+    try {
+      console.log('🔍 Iniciando guardado de transacción...');
       
+      let transactionData;
+      
+      // Si paypalDetails es un objeto completo de transacción (modo prueba), usarlo directamente
+      if (paypalDetails.formulario && paypalDetails.paypal) {
+        transactionData = paypalDetails;
+      } else {
+        // Modo normal: obtener datos del formulario
+        const formData = getAllFormData();
+        
+        // Crear objeto completo de transacción
+        transactionData = {
+          // Información del formulario
+          formulario: formData,
+          
+          // Información de PayPal
+          paypal: {
+            transaction_id: paypalDetails.id,
+            status: paypalDetails.status,
+            payer_email: paypalDetails.payer?.email_address || 'No disponible',
+            amount: paypalDetails.purchase_units?.[0]?.amount?.value || 'No disponible',
+            currency: paypalDetails.purchase_units?.[0]?.amount?.currency_code || 'USD',
+            payer_name: paypalDetails.payer?.name || {},
+            payer_address: paypalDetails.payer?.address || {},
+            create_time: paypalDetails.create_time,
+            update_time: paypalDetails.update_time
+          },
+          
+          // Metadatos adicionales
+          timestamp: new Date().toISOString(),
+          fecha_local: new Date().toLocaleString('es-ES', {
+            timeZone: 'America/Havana',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }),
+          user_agent: navigator.userAgent,
+          url: window.location.href,
+          ip_address: 'N/A' // Se puede obtener del servidor
+        };
+      }
+      
+      console.log('📊 Transacción completa capturada:', transactionData);
+      
+      // Registrar datos de depuración (ocultando información sensible)
+      console.log('📝 Datos de la transacción a guardar:', JSON.stringify({
+        action: 'save_transaction',
+        transactionData: {
+          ...transactionData,
+          formulario: {
+            ...transactionData.formulario,
+            tarjeta_numero: '***' + (transactionData.formulario.tarjeta_numero || '').slice(-4),
+            tarjeta_cvv: '***',
+            tarjeta_vencimiento: transactionData.formulario.tarjeta_vencimiento ? '**/**' : undefined,
+            tarjeta_numero_remitente: transactionData.formulario.tarjeta_numero_remitente ? '***' + transactionData.formulario.tarjeta_numero_remitente.slice(-4) : undefined
+          }
+        }
+      }, null, 2));
+      
+      // Enviar a la base de datos
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
         headers: {
@@ -677,146 +738,48 @@
         })
       });
 
-      if (response.ok) {
-        console.log('✅ Transacción guardada en Supabase correctamente');
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Error guardando en Supabase:', errorText);
-        throw new Error('Error guardando en base de datos');
+        console.error('❌ Error en la respuesta del servidor:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Error guardando en base de datos: ${response.status} ${response.statusText}`);
       }
-      return;
-    }
-    
-    // Modo normal: obtener datos del formulario
-    const formData = getAllFormData();
-    
-    // Crear objeto completo de transacción
-    const transactionData = {
-      // Información del formulario
-      formulario: formData,
       
-      // Información de PayPal
-      paypal: {
-        transaction_id: paypalDetails.id,
-        status: paypalDetails.status,
-        payer_email: paypalDetails.payer?.email_address || 'No disponible',
-        amount: paypalDetails.purchase_units?.[0]?.amount?.value || 'No disponible',
-        currency: paypalDetails.purchase_units?.[0]?.amount?.currency_code || 'USD',
-        payer_name: paypalDetails.payer?.name || {},
-        payer_address: paypalDetails.payer?.address || {},
-        create_time: paypalDetails.create_time,
-        update_time: paypalDetails.update_time
-      },
+      const result = await response.json();
+      console.log('✅ Transacción guardada correctamente:', result);
       
-      // Metadata
-      timestamp: new Date().toISOString(),
-      fecha_local: new Date().toLocaleString('es-ES', {
-        timeZone: 'America/Havana',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      }),
-      user_agent: navigator.userAgent,
-      url: window.location.href,
-      ip_address: 'N/A' // Se puede obtener del servidor
-    };
-    
-    console.log('📊 Transacción completa capturada:', transactionData);
-    
-    // Guardar transacción en Supabase
-    try {
-      const supabaseData = {
-        paypal_transaction_id: paypalDetails.id,
-        orden_id: formData.orden_id,
-        remitente_nombre: formData.nombre_remitente,
-        remitente_apellido: formData.apellido_remitente,
-        remitente_telefono: formData.telefono_remitente,
-        remitente_email: formData.email_remitente,
-        beneficiario_nombre: formData.benef_nombre,
-        beneficiario_ciudad: formData.benef_ciudad,
-        tarjeta_destinatario: formData.tarjeta_destinatario,
-        moneda_entrega: formData.entrega,
-        tarjeta_pago: formData.tarjeta_pago_enmascarada,
-        tarjeta_vencimiento: '**/**',
-        tarjeta_cvv: '***',
-        tarjeta_nombre: formData.nombre_tarjeta,
-        direccion_facturacion: formData.direccion_facturacion,
-        codigo_postal: formData.codigo_postal,
-        pais_facturacion: formData.pais_facturacion,
-        monto_usd: formData.monto_usd,
-        tarifa: formData.tarifa,
-        monto_total: formData.monto_total,
-        paypal_status: paypalDetails.status,
-        paypal_payer_email: paypalDetails.payer?.email_address || formData.email_remitente,
-        paypal_amount: paypalDetails.purchase_units?.[0]?.amount?.value || formData.monto_total,
-        fecha_transaccion: new Date().toISOString(),
-        fecha_local: new Date().toLocaleString(),
-        user_agent: navigator.userAgent,
-        url_origen: window.location.href,
-        notas: transactionData.formulario.documento_url ? 'Transacción con documento subido' : 'Transacción sin documento',
-        documento_url: transactionData.formulario.documento_url || null,
-        datos_completos: transactionData
-      };
-
-      const response = await fetch('/.netlify/functions/database', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-secure-token-2024'
-        },
-        body: JSON.stringify({
-          action: 'save_transaction',
-          transactionData: {
-            formulario: transactionData.formulario,
-            paypal: transactionData.paypal,
-            fecha_local: transactionData.fecha_local,
-            documento_url: transactionData.formulario.documento_url
-          }
-        })
-      });
-
-      if (response.ok) {
-        console.log('✅ Transacción guardada en Supabase correctamente');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Error guardando en Supabase:', errorText);
-        throw new Error('Error guardando en base de datos');
+      // Solo guardar datos NO sensibles en localStorage para referencia
+      try {
+        const safeData = {
+          id: result.id || paypalDetails?.id || 'N/A',
+          timestamp: new Date().toISOString(),
+          orden_id: result.orden_id || 'N/A',
+          remitente_nombre: result.remitente_nombre || 'N/A',
+          beneficiario: result.beneficiario_nombre || 'N/A',
+          monto_usd: result.monto_usd || 'N/A',
+          monto_total: result.monto_total || 'N/A',
+          status: 'completed'
+        };
+        
+        // Guardar en localStorage
+        const historial = JSON.parse(localStorage.getItem('historialTransacciones') || '[]');
+        historial.unshift(safeData);
+        localStorage.setItem('historialTransacciones', JSON.stringify(historial));
+        
+      } catch (storageError) {
+        console.warn('⚠️ No se pudo guardar en localStorage:', storageError);
+        // No es crítico, continuar
       }
-
+      
+      return result;
+      
     } catch (error) {
-      console.error('❌ Error guardando transacción en Supabase:', error);
-      throw error;
+      console.error('❌ Error en guardarTransaccionCompleta:', error);
+      throw error; // Relanzar el error para manejarlo en el código que llama a esta función
     }
-    
-    // Solo guardar datos NO sensibles en localStorage para referencia
-    try {
-      const safeData = {
-        id: paypalDetails.id,
-        timestamp: transactionData.timestamp,
-        orden_id: formData.orden_id,
-        remitente_nombre: formData.nombre_remitente,
-        beneficiario: formData.benef_nombre,
-        monto_usd: formData.monto_usd,
-        monto_total: formData.monto_total,
-        status: 'completed'
-      };
-      
-      localStorage.setItem('lastTransaction', JSON.stringify(safeData));
-      
-      // Mantener historial básico (sin datos sensibles)
-      const history = JSON.parse(localStorage.getItem('transactionHistory') || '[]');
-      history.push(safeData);
-      localStorage.setItem('transactionHistory', JSON.stringify(history));
-      
-      console.log('💾 Referencia básica guardada en localStorage');
-    } catch (error) {
-      console.error('❌ Error guardando referencia:', error);
-    }
-    
-  }
 
   // Función para subir documento de identidad a Supabase Storage
   async function subirDocumento(file, transactionId) {
@@ -907,12 +870,17 @@
       
       // Usar datos de prueba si los campos están vacíos
       const testData = {
-        nombre_remitente: formData.nombre_remitente || 'Usuario Prueba',
-        apellido_remitente: formData.apellido_remitente || 'Test',
-        telefono_remitente: formData.telefono_remitente || '+1234567890',
-        email_remitente: formData.email_remitente || 'test@example.com',
+        // Datos del remitente
+        remitente_nombre: formData.remitente_nombre || 'Usuario Prueba',
+        remitente_apellido: formData.remitente_apellido || 'Test',
+        remitente_tel: formData.remitente_tel || '+1234567890',
+        remitente_email: formData.remitente_email || 'test@example.com',
+        
+        // Datos del beneficiario
         benef_nombre: formData.benef_nombre || 'Beneficiario Prueba',
         benef_ciudad: formData.benef_ciudad || 'La Habana',
+        
+        // Datos de pago
         entrega: formData.entrega || 'CUP',
         tarjeta_numero: formData.tarjeta_numero || '9999999999999999',
         tarjeta_numero_remitente: formData.tarjeta_numero_remitente || '4111111111111111',
@@ -922,11 +890,19 @@
         direccion_facturacion: formData.direccion_facturacion || '123 Test St',
         codigo_postal: formData.codigo_postal || '12345',
         pais_facturacion: formData.pais_facturacion || 'US',
+        
+        // Montos
         monto_usd: formData.monto_usd || 100,
         tarifa: formData.tarifa || 5,
         monto_total: formData.monto_total || 105,
+        monto_depositar: (formData.monto_usd || 100) * (formData.tasa || 1),
+        
+        // Identificación
         orden_id: formData.orden_id || 'TEST-' + Date.now(),
-        notas: formData.notas || 'Transacción de prueba'
+        notas: formData.notas || 'Transacción de prueba',
+        
+        // Tasa de cambio (necesaria para el cálculo)
+        tasa: formData.tasa || 1
       };
       
       // Crear datos de PayPal simulados con ID único
@@ -1340,11 +1316,11 @@
       resultDiv.style.color = 'var(--muted)';
       
       // Obtener archivo de documento si existe
-      const fileInput = document.getElementById('documento');
+      const fileInput = document.getElementById('documento_id');
       let documentoUrl = '';
       let fileName = 'sin_documento.jpg';
       
-      if (fileInput.files.length > 0) {
+      if (fileInput && fileInput.files && fileInput.files.length > 0) {
         try {
           const file = fileInput.files[0];
           fileName = file.name;
