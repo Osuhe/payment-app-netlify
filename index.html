@@ -276,6 +276,25 @@
       <div class="hr"></div>
       <h2>💳 Pagar con PayPal</h2>
       <div id="paypal-button-container"></div>
+      
+      <!-- Botón de Prueba -->
+      <div class="hr"></div>
+      <h2>🛠 Probar sin pagar</h2>
+      <p class="muted">Usa este botón para probar el envío de correos sin realizar un pago real.</p>
+      <button id="test-button" style="
+        background: #4f46e5;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+      ">
+        Probar Envío de Correo
+      </button>
+      <div id="test-result" style="margin-top: 10px; font-size: 14px;"></div>
     </div>
 
     <!-- DERECHA -->
@@ -1299,6 +1318,62 @@
       }
     }).render('#paypal-button-container');
   }
+
+  // Manejador para el botón de prueba
+  document.getElementById('test-button')?.addEventListener('click', async function() {
+    const button = this;
+    const resultDiv = document.getElementById('test-result');
+    
+    try {
+      // Validar formulario
+      const validation = validate();
+      if (!validation.ok) {
+        resultDiv.textContent = `Error: ${validation.msg}`;
+        resultDiv.style.color = '#ef4444';
+        return;
+      }
+      
+      // Mostrar mensaje de procesamiento
+      button.disabled = true;
+      button.textContent = 'Procesando...';
+      resultDiv.textContent = 'Procesando transacción de prueba...';
+      resultDiv.style.color = 'var(--muted)';
+      
+      // Obtener archivo de documento si existe
+      const fileInput = document.getElementById('documento');
+      let documentoUrl = '';
+      let fileName = 'sin_documento.jpg';
+      
+      if (fileInput.files.length > 0) {
+        try {
+          const file = fileInput.files[0];
+          fileName = file.name;
+          // Subir el documento a Supabase
+          const uploadResult = await subirDocumento(file, 'TEST-' + Date.now());
+          documentoUrl = uploadResult.url;
+          console.log('Documento subido:', documentoUrl);
+        } catch (error) {
+          console.warn('No se pudo subir el documento, continuando sin él:', error);
+          // Continuar sin el documento si hay un error
+        }
+      }
+      
+      // Procesar transacción de prueba
+      await procesarTransaccionPrueba(documentoUrl, fileName);
+      
+      // Mostrar mensaje de éxito
+      resultDiv.innerHTML = '✅ <strong>¡Prueba exitosa!</strong> Se ha enviado un correo con los detalles de la transacción.';
+      resultDiv.style.color = '#10b981';
+      
+    } catch (error) {
+      console.error('Error en prueba:', error);
+      resultDiv.textContent = `❌ Error: ${error.message || 'Error desconocido'}`;
+      resultDiv.style.color = '#ef4444';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Probar Envío de Correo';
+    }
+  });
 
   // Inicializar PayPal cuando el DOM esté listo
   document.addEventListener('DOMContentLoaded', function() {
