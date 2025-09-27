@@ -664,11 +664,22 @@
     try {
       console.log('🔍 Iniciando guardado de transacción...');
       
+      // Validar que paypalDetails existe
+      if (!paypalDetails) {
+        throw new Error('No se proporcionaron detalles de la transacción');
+      }
+      
       let transactionData;
       
       // Si paypalDetails es un objeto completo de transacción (modo prueba), usarlo directamente
       if (paypalDetails.formulario && paypalDetails.paypal) {
+        console.log('📝 Usando datos de transacción de prueba');
         transactionData = paypalDetails;
+        
+        // Asegurarse de que los campos requeridos estén presentes
+        if (!transactionData.formulario.orden_id) {
+          transactionData.formulario.orden_id = 'TEST-' + Date.now();
+        }
       } else {
         // Modo normal: obtener datos del formulario
         const formData = getAllFormData();
@@ -780,9 +791,24 @@
       console.error('❌ Error en guardarTransaccionCompleta:', error);
       throw error; // Relanzar el error para manejarlo en el código que llama a esta función
     }
+  }
 
   // Función para subir documento de identidad a Supabase Storage
   async function subirDocumento(file, transactionId) {
+    // Validar que el archivo existe
+    if (!file) {
+      console.error('❌ No se proporcionó ningún archivo para subir');
+      throw new Error('No se proporcionó ningún archivo');
+    }
+    
+    // Validar que el transactionId existe
+    if (!transactionId) {
+      transactionId = 'NO-ID-' + Date.now();
+      console.warn('⚠️ No se proporcionó un ID de transacción, usando:', transactionId);
+    }
+    
+    console.log(`📤 Iniciando subida de documento: ${file.name} (${Math.round(file.size/1024)} KB)`);
+    
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async function(e) {
@@ -1320,7 +1346,8 @@
       let documentoUrl = '';
       let fileName = 'sin_documento.jpg';
       
-      if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      // Verificar si el campo de archivo existe y tiene archivos seleccionados
+      if (fileInput && 'files' in fileInput && fileInput.files && fileInput.files.length > 0) {
         try {
           const file = fileInput.files[0];
           fileName = file.name;
