@@ -2,13 +2,26 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Configuración de Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Error: Faltan variables de entorno de Supabase');
+  console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Definida' : '❌ No definida');
+  console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Definida' : '❌ No definida');
+  console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Definida' : '❌ No definida');
   throw new Error('Faltan variables de entorno de Supabase');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Crear cliente con opciones mejoradas
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+});
+
+console.log('🔌 Cliente Supabase inicializado correctamente');
 
 exports.handler = async (event, context) => {
   // Configurar CORS

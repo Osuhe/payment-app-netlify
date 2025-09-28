@@ -28,25 +28,37 @@ exports.handler = async (event, context) => {
     
     // Verificar variables de entorno
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      const errorMsg = '❌ Error: Variables de entorno faltantes. Asegúrate de configurar SUPABASE_URL y SUPABASE_ANON_KEY';
+      const errorMsg = '❌ Error: Variables de entorno faltantes.';
       console.error(errorMsg);
+      console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Definida' : '❌ No definida');
+      console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Definida' : '❌ No definida');
+      console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Definida' : '❌ No definida');
+      
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
           error: 'Error de configuración',
-          details: errorMsg,
-          solution: 'Configura las variables de entorno en Netlify: SUPABASE_URL y SUPABASE_ANON_KEY'
+          details: 'Faltan variables de entorno de Supabase',
+          solution: 'Configura las variables de entorno en Netlify: SUPABASE_URL y SUPABASE_ANON_KEY o SUPABASE_SERVICE_ROLE_KEY'
         })
       };
     }
 
-    // Inicializar cliente Supabase
+    // Inicializar cliente Supabase con opciones mejoradas
     console.log('🔑 Inicializando cliente Supabase');
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
+    });
+    
+    console.log('✅ Cliente Supabase inicializado correctamente');
     
     // Validar y parsear el cuerpo de la solicitud
     let body;
