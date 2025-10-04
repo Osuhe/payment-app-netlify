@@ -841,9 +841,9 @@
             console.error('❌ Error response del servidor:', response.status, errorText);
             
             // Intentar con la función original como fallback
-            console.log('🔄 Intentando con función upload-image original...');
+            console.log('🔄 Intentando con función upload-simple...');
             try {
-              const fallbackResponse = await fetch('/.netlify/functions/upload-image', {
+              const fallbackResponse = await fetch('/.netlify/functions/upload-simple', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
