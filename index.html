@@ -817,7 +817,7 @@
           const imageData = e.target.result;
           
           console.log('🔄 Intentando subir a Supabase Storage...');
-          const response = await fetch('/.netlify/functions/upload-image-improved', {
+          const response = await fetch('/.netlify/functions/upload-basic', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
