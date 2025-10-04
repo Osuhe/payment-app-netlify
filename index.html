@@ -115,17 +115,17 @@
         <div class="row two">
           <div>
             <label>Tu nombre completo *</label>
-            <input name="remitente_nombre" required />
+            <input name="nombre_remitente" required />
           </div>
           <div>
             <label>WhatsApp o Teléfono *</label>
-            <input name="remitente_tel" type="tel" inputmode="numeric" pattern="[0-9]*" required />
+            <input name="telefono_remitente" type="tel" inputmode="numeric" pattern="[0-9]*" required />
           </div>
         </div>
         <div class="row two">
           <div>
             <label>Correo electrónico</label>
-            <input name="remitente_email" />
+            <input name="email_remitente" />
           </div>
           <div>
             <label>Documento (opcional)</label>
@@ -369,7 +369,7 @@
   const cardMaskDestinatario = document.getElementById('cardMask');
   const tarjetaInput = document.getElementById('tarjeta_numero_remitente');
   const cardMask = document.getElementById('cardMaskRemitente');
-  const telefonoInput = document.querySelector('input[name="remitente_tel"]');
+  const telefonoInput = document.querySelector('input[name="telefono_remitente"]');
 
   // Tasas de conversión escalonadas
   function obtenerTasaConversion(monto, moneda) {
@@ -494,7 +494,7 @@
     }
 
     resumen.innerHTML = `
-      <div><strong>Remitente</strong><span>${fd.get('remitente_nombre') || '-'}</span></div>
+      <div><strong>Remitente</strong><span>${fd.get('nombre_remitente') || '-'}</span></div>
       <div><strong>Beneficiario</strong><span>${fd.get('benef_nombre') || '-'}</span></div>
       <div><strong>Ciudad</strong><span>${fd.get('benef_ciudad') || '-'}</span></div>
       <div><strong>Moneda</strong><span>${moneda || '-'}</span></div>
@@ -545,8 +545,8 @@
   }
 
   function validate(){
-    const remitenteNombre = document.querySelector('input[name="remitente_nombre"]').value.trim();
-    const remitenteTel = document.querySelector('input[name="remitente_tel"]').value.trim();
+    const remitenteNombre = document.querySelector('input[name="nombre_remitente"]').value.trim();
+    const remitenteTel = document.querySelector('input[name="telefono_remitente"]').value.trim();
     const benefNombre = document.querySelector('input[name="benef_nombre"]').value.trim();
     const benefCiudad = document.querySelector('input[name="benef_ciudad"]').value.trim();
     const entrega = document.querySelector('select[name="entrega"]').value;
@@ -897,10 +897,10 @@
       // Usar datos de prueba si los campos están vacíos
       const testData = {
         // Datos del remitente
-        remitente_nombre: formData.remitente_nombre || 'Usuario Prueba',
-        remitente_apellido: formData.remitente_apellido || 'Test',
-        remitente_tel: formData.remitente_tel || '+1234567890',
-        remitente_email: formData.remitente_email || 'test@example.com',
+        nombre_remitente: formData.nombre_remitente || 'Usuario Prueba',
+        apellido_remitente: formData.apellido_remitente || 'Test',
+        telefono_remitente: formData.telefono_remitente || '+1234567890',
+        email_remitente: formData.email_remitente || 'test@example.com',
         
         // Datos del beneficiario
         benef_nombre: formData.benef_nombre || 'Beneficiario Prueba',
@@ -936,7 +936,7 @@
         id: 'TEST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
         status: 'COMPLETED',
         payer: {
-          email_address: formData.remitente_email || 'test@example.com'
+          email_address: formData.email_remitente || 'test@example.com'
         }
       };
       
@@ -952,9 +952,9 @@
       
       // Preparar datos para email (igual que el flujo real)
       const datosEmail = {
-        remitente: transactionData.formulario.remitente_nombre,
-        telefono: transactionData.formulario.remitente_telefono,
-        email: transactionData.formulario.remitente_email,
+        remitente: transactionData.formulario.nombre_remitente,
+        telefono: transactionData.formulario.telefono_remitente,
+        email: transactionData.formulario.email_remitente,
         beneficiario: transactionData.formulario.beneficiario_nombre,
         ciudad: transactionData.formulario.beneficiario_ciudad,
         entrega: transactionData.formulario.entrega,
@@ -1013,9 +1013,9 @@
       
       // Datos para el email
       const datosEmail = {
-        remitente: transactionData.formulario.remitente_nombre,
-        telefono: transactionData.formulario.remitente_telefono,
-        email: transactionData.formulario.remitente_email,
+        remitente: transactionData.formulario.nombre_remitente,
+        telefono: transactionData.formulario.telefono_remitente,
+        email: transactionData.formulario.email_remitente,
         beneficiario: transactionData.formulario.beneficiario_nombre,
         ciudad: transactionData.formulario.beneficiario_ciudad,
         entrega: transactionData.formulario.entrega,

@@ -1,27 +1,31 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// Configuración de Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+// Función para inicializar Supabase de forma segura
+function initializeSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Error: Faltan variables de entorno de Supabase');
-  console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Definida' : '❌ No definida');
+  console.log('🔍 Verificando variables de entorno...');
+  console.log('SUPABASE_URL:', supabaseUrl ? '✅ Definida' : '❌ No definida');
   console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Definida' : '❌ No definida');
   console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Definida' : '❌ No definida');
-  throw new Error('Faltan variables de entorno de Supabase');
-}
 
-// Crear cliente con opciones mejoradas
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Variables de entorno de Supabase no configuradas');
   }
-});
 
-console.log('🔌 Cliente Supabase inicializado correctamente');
+  // Crear cliente con opciones mejoradas
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  });
+
+  console.log('🔌 Cliente Supabase inicializado correctamente');
+  return supabase;
+}
 
 exports.handler = async (event, context) => {
   // Configurar CORS
@@ -42,6 +46,22 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Inicializar Supabase
+    let supabase;
+    try {
+      supabase = initializeSupabase();
+    } catch (initError) {
+      console.error('❌ Error inicializando Supabase:', initError);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Error de configuración del servidor',
+          details: 'No se pudo conectar con la base de datos'
+        })
+      };
+    }
+
     // Verificar autenticación
     const authHeader = event.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -63,7 +83,7 @@ exports.handler = async (event, context) => {
 
     if (event.httpMethod === 'GET') {
       // Obtener transacciones
-      const transactions = await getTransactions();
+      const transactions = await getTransactions(supabase);
       return {
         statusCode: 200,
         headers,
@@ -74,7 +94,7 @@ exports.handler = async (event, context) => {
       
       if (body.action === 'add_sample_data') {
         // Agregar datos de muestra
-        const result = await addSampleData();
+        const result = await addSampleData(supabase);
         return {
           statusCode: 200,
           headers,
@@ -82,7 +102,7 @@ exports.handler = async (event, context) => {
         };
       } else if (body.action === 'clear_all_transactions') {
         // Limpiar todas las transacciones
-        const result = await clearAllTransactions();
+        const result = await clearAllTransactions(supabase);
         return {
           statusCode: 200,
           headers,
@@ -93,7 +113,7 @@ exports.handler = async (event, context) => {
           console.log('=== GUARDANDO TRANSACCIÓN ===');
           console.log('Datos recibidos:', JSON.stringify(body.transactionData, null, 2));
           
-          const result = await saveTransaction(body.transactionData);
+          const result = await saveTransaction(supabase, body.transactionData);
           
           console.log('Resultado guardado:', result);
           return {
@@ -115,7 +135,7 @@ exports.handler = async (event, context) => {
         } 
       } else if (body.action === 'upload_image') {
         // Subir imagen a Supabase Storage
-        const result = await uploadImageToSupabase(body.imageData, body.fileName, body.transactionId);
+        const result = await uploadImageToSupabase(supabase, body.imageData, body.fileName, body.transactionId);
         return {
           statusCode: 200,
           headers,
@@ -149,7 +169,7 @@ exports.handler = async (event, context) => {
 };
 
 // Función para limpiar todas las transacciones
-async function clearAllTransactions() {
+async function clearAllTransactions(supabase) {
   try {
     console.log('🗑️ Limpiando todas las transacciones...');
     
@@ -352,7 +372,7 @@ async function getTransactions(event, headers) {
 }
 
 // Función para subir imagen a Supabase Storage
-async function uploadImageToSupabase(imageData, fileName, transactionId) {
+async function uploadImageToSupabase(supabase, imageData, fileName, transactionId) {
   try {
     // Convertir base64 a buffer
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
@@ -395,7 +415,7 @@ async function uploadImageToSupabase(imageData, fileName, transactionId) {
 }
 
 // Función para obtener transacciones
-async function getTransactions() {
+async function getTransactions(supabase) {
   try {
     const { data, error } = await supabase
       .from('transactions')
@@ -435,7 +455,7 @@ async function getTransactions() {
 }
 
 // Función para guardar transacciones
-async function saveTransaction(transactionData) {
+async function saveTransaction(supabase, transactionData) {
   try {
     // Preparar datos para la base de datos
     const dbData = {
@@ -509,7 +529,7 @@ async function saveTransaction(transactionData) {
   }
 }
 
-async function addSampleData() {
+async function addSampleData(supabase) {
   try {
     const sampleTransactions = [
       {
