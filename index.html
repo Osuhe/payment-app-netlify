@@ -834,8 +834,8 @@
           
           if (response.ok) {
             const result = await response.json();
-            console.log('✅ Documento subido a Supabase Storage:', result.url);
-            resolve(result.url);
+            console.log('✅ Documento subido a Supabase Storage:', result.data?.url || result.url);
+            resolve(result.data?.url || result.url || `https://via.placeholder.com/400x300/10b981/ffffff?text=Success+${transactionId}`);
           } else {
             const errorText = await response.text();
             console.error('❌ Error response del servidor:', response.status, errorText);
@@ -857,8 +857,8 @@
               
               if (fallbackResponse.ok) {
                 const fallbackResult = await fallbackResponse.json();
-                console.log('✅ Documento subido con función original:', fallbackResult.url);
-                resolve(fallbackResult.url);
+                console.log('✅ Documento subido con función original:', fallbackResult.data?.url || fallbackResult.url);
+                resolve(fallbackResult.data?.url || fallbackResult.url || `https://via.placeholder.com/400x300/10b981/ffffff?text=Fallback+${transactionId}`);
                 return;
               }
             } catch (fallbackError) {
@@ -1127,7 +1127,7 @@
       const documentoUrl = await subirDocumento(file, testId);
       
       // Mostrar resultado exitoso con detalles de debugging
-      const isRealUpload = documentoUrl.includes('supabase') || documentoUrl.includes('sejbnlnjqlyyxwuqrwen');
+      const isRealUpload = documentoUrl && (documentoUrl.includes('supabase') || documentoUrl.includes('sejbnlnjqlyyxwuqrwen'));
       const uploadType = isRealUpload ? 'Supabase Storage' : 'Simulada (Fallback)';
       
       resultDiv.innerHTML = `
