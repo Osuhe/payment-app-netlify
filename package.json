@@ -16,15 +16,12 @@
   "license": "ISC",
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
-    "@sendgrid/mail": "^7.7.0",
+    "@sendgrid/mail": "^8.1.6",
     "@supabase/supabase-js": "^2.38.0",
     "dotenv": "^17.2.2",
     "node-fetch": "^3.3.2"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "netlify-cli": "^23.8.0"
   }
 }
